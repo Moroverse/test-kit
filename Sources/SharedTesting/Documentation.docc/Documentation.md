@@ -21,7 +21,7 @@ The JSON utilities allow you to easily create JSON data from dictionaries and ar
 
 Ensure instances are properly deallocated to prevent potential memory leaks.
 
-- ``TeardownTracking``
+- ``TeardownTrackingTrait``
 
 ### Asynchronous Process Handling
 
