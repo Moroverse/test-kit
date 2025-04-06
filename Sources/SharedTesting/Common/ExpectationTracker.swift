@@ -4,6 +4,7 @@
 
 import Foundation
 import Testing
+import ConcurrencyExtras
 
 /// A struct that facilitates tracking expectations for asynchronous operations.
 ///
@@ -12,10 +13,11 @@ import Testing
 /// before completion and the expected result.
 ///
 /// - Note: This struct is designed to be used with the `expect` function.
-public struct ExpectationTracker<T: Equatable & Sendable, E: Error & Equatable> {
+
+public struct ExpectationTracker<T: Equatable & Sendable, E: Error & Equatable>: @unchecked Sendable {
     private let action: @Sendable () async throws -> T
-    private var expectedResult: (() -> Result<T, E>)?
-    private var event: (() -> Void)?
+    private var expectedResult: (() async -> Result<T, E>)?
+    private var event: (() async -> Void)?
     private let sourceLocation: SourceLocation
 
     init(
@@ -30,7 +32,7 @@ public struct ExpectationTracker<T: Equatable & Sendable, E: Error & Equatable> 
     ///
     /// - Parameter result: A closure returning the expected result.
     /// - Returns: A new `ExpectationTracker` instance with the expected result configured.
-    public func toCompleteWith(_ result: @escaping () -> Result<T, E>) -> Self {
+    public func toCompleteWith(_ result: @escaping () async -> Result<T, E>) -> Self {
         var copy = self
         copy.expectedResult = result
         return copy
@@ -40,7 +42,7 @@ public struct ExpectationTracker<T: Equatable & Sendable, E: Error & Equatable> 
     ///
     /// - Parameter event: A closure representing the event to occur.
     /// - Returns: A new `ExpectationTracker` instance with the event configured.
-    public func when(_ event: @escaping () -> Void) -> Self {
+    public func when(_ event: @escaping () async -> Void) -> Self {
         var copy = self
         copy.event = event
         return copy
@@ -57,7 +59,7 @@ public struct ExpectationTracker<T: Equatable & Sendable, E: Error & Equatable> 
             return
         }
 
-        let expected = expectedResult()
+        let expected = await expectedResult()
 
         do {
             let receivedValue = try await performAsync(process: action, onBeforeCompletion: event ?? {})
@@ -84,11 +86,14 @@ public struct ExpectationTracker<T: Equatable & Sendable, E: Error & Equatable> 
     }
 
     private func performAsync(
-        process: @escaping () async throws -> T,
-        onBeforeCompletion: @escaping () -> Void
+        process: @escaping @Sendable () async throws -> T,
+        onBeforeCompletion: @escaping () async -> Void
     ) async throws -> T {
-        let value = try await process()
-        onBeforeCompletion()
-        return value
+        let task = Task {
+            try await process()
+        }
+        await Task.megaYield()
+        await onBeforeCompletion()
+        return try await task.value
     }
 }

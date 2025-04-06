@@ -16,7 +16,7 @@ A comprehensive Swift testing utilities library designed to simplify and enhance
 Add this package to your Swift package dependencies:
 
 ```swift
-.package(url: "https://github.com/moroverse/shared-testing.git", from: "1.0.0")
+.package(url: "https://github.com/moroverse/shared-testing.git", from: "0.1.0")
 ```
 
 Then add the dependency to your target:
@@ -60,6 +60,33 @@ func testAsyncSuccess() async throws {
         #expect(sut.data == "Result")
     }
 }
+```
+
+### Expectation Tracking
+
+```swift
+    @Test("ViewModel fetches data successfully")
+    func testFetchDataSuccess() async throws {
+        let spy = MockNetworkService()
+        let viewModel = ViewModel(networkService: spy)
+        let data = ["item1", "item2"].joined(separator: ",").data(using: .utf8)!
+        
+        await Test.expect { try await viewModel.fetchItems() }
+            .toCompleteWith { .success(["item1", "item2"]) }
+            .when { await spy.completeWith(.success(data)) }
+            .execute()
+    }
+
+    @Test("ViewModel handles fetch error")
+    func testFetchDataError() async throws {
+        let viewModel = ViewModel(networkService: FailingNetworkService())
+        let error = NetworkError.connectionLost
+        
+        await Test.expect { try await viewModel.fetchItems() }
+            .toCompleteWith { .failure(error) }
+            .when { await spy.completeWith(.failure(error)) }
+            .execute()
+    }
 ```
 
 ### UI Presentation Testing

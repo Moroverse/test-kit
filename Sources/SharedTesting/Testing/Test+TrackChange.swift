@@ -20,7 +20,7 @@ public extension Test {
     ///
     /// - Usage:
     ///   ```swift
-    ///   await trackChange(of: \.state, in: viewModel)
+    ///   await Test.trackChange(of: \.state, in: viewModel)
     ///       .givenInitialState { viewModel.updateQuery("new query") }
     ///       .expectInitialValue { .loading }
     ///       .whenChanging { await viewModel.performSearch() }

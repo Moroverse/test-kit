@@ -18,29 +18,38 @@ public extension Test {
     ///
     /// - Usage:
     ///   ```swift
-    ///   func testAsyncOperation() async throws {
-    ///       let viewModel = ViewModel()
+    ///    @Test("ViewModel fetches data successfully")
+    ///    func testFetchDataSuccess() async throws {
+    ///        let spy = MockNetworkService()
+    ///        let viewModel = ViewModel(networkService: spy)
+    ///        let data = ["item1", "item2"].joined(separator: ",").data(using: .utf8)!
     ///
-    ///       await expect { try await viewModel.fetchData() }
-    ///           .toCompleteWith { .success(["item1", "item2"]) }
-    ///           .when { mockNetworkService.simulateNetworkDelay() }
-    ///           .execute()
-    ///   }
+    ///        await Test.expect { try await viewModel.fetchItems() }
+    ///            .toCompleteWith { .success(["item1", "item2"]) }
+    ///            .when { await spy.completeWith(.success(data)) }
+    ///            .execute()
+    ///    }
     ///   ```
     ///
     /// In this example:
     /// - `expect` is called with an async closure that fetches data from the view model.
     /// - `toCompleteWith` specifies the expected successful result.
-    /// - `when` defines an action to be performed before the operation completes (simulating a network delay).
+    /// - `when` defines an action to be performed before the operation completes .
     /// - `execute()` runs the expectation and performs the assertions.
     ///
     /// You can also use it to test for expected errors:
     ///
     /// ```swift
-    /// await expect { try await viewModel.fetchData() }
-    ///     .toCompleteWith { .failure(NetworkError.connectionLost) }
-    ///     .when { mockNetworkService.simulateConnectionLoss() }
-    ///     .execute()
+    ///     func testFetchDataError() async throws {
+    ///         let spy = FailingNetworkService()
+    ///         let viewModel = ViewModel(networkService: spy)
+    ///         let error = NetworkError.connectionLost
+    ///
+    ///         await Test.expect { try await viewModel.fetchItems() }
+    ///             .toCompleteWith { .failure(error) }
+    ///             .when { await spy.completeWith(.failure(error)) }
+    ///             .execute()
+    ///     }
     /// ```
     ///
     /// - Note: The `execute()` method must be called at the end of the chain to perform the expectation.
@@ -48,6 +57,13 @@ public extension Test {
         _ action: @escaping @Sendable () async throws -> T,
         sourceLocation: SourceLocation = #_sourceLocation
     ) -> ExpectationTracker<T, E> {
+        ExpectationTracker(action, sourceLocation: sourceLocation)
+    }
+
+    static func expect<T: Equatable & Sendable>(
+        _ action: @escaping @Sendable () async throws -> T,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) -> ExpectationTracker<T, Never> {
         ExpectationTracker(action, sourceLocation: sourceLocation)
     }
 }

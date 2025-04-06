@@ -29,7 +29,8 @@ Manage and test asynchronous code more effectively with utilities for performing
 
 - ``AsyncSpy``
 - ``Testing/Test/async(yieldCount:process:onBeforeCompletion:onAfterCompletion:)``
-- ``Testing/Test/expect(_:sourceLocation:)``
+- ``Testing/Test/expect(_:sourceLocation:)-7ezxb``
+- ``Testing/Test/expect(_:sourceLocation:)->ExpectationTracker<T,Never>``
 - ``Testing/Test/trackChange(of:in:sourceLocation:)``
 
 Verify that localizetrackChange(of:in:sourceLocation:)``
