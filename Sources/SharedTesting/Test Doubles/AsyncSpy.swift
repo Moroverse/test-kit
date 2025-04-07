@@ -267,7 +267,9 @@ extension AsyncSpy {
     ) async throws {
         try await withMainSerialExecutor {
             let task = Task { try await process() }
-            await Task.megaYield(count: yieldCount)
+            for _ in 0..<yieldCount {
+                await Task.megaYield()
+            }
             expectationBeforeCompletion?()
             switch completeWith?() {
             case let .success(result):
