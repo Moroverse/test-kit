@@ -230,6 +230,7 @@ extension AsyncSpy {
     func async<T: Sendable>(
         yieldCount: Int = 1,
         process: @escaping () async throws -> T,
+        processAdvance: (() async -> Void)? = nil,
         expectationBeforeCompletion: (() -> Void)? = nil,
         completeWith: (() -> Swift.Result<Result, Error>)? = nil,
         expectationAfterCompletion: ((T) -> Void)? = nil,
@@ -239,6 +240,7 @@ extension AsyncSpy {
             yieldCount: yieldCount,
             at: 0,
             process: process,
+            processAdvance: processAdvance,
             expectationBeforeCompletion: expectationBeforeCompletion,
             completeWith: completeWith,
             expectationAfterCompletion: expectationAfterCompletion,
@@ -260,6 +262,7 @@ extension AsyncSpy {
         yieldCount: Int = 1,
         at index: Int = 0,
         process: @escaping () async throws -> T,
+        processAdvance: (() async -> Void)? = nil,
         expectationBeforeCompletion: (() -> Void)? = nil,
         completeWith: (() -> Swift.Result<Result, Error>)? = nil,
         expectationAfterCompletion: ((T) -> Void)? = nil,
@@ -270,6 +273,7 @@ extension AsyncSpy {
             for _ in 0..<yieldCount {
                 await Task.megaYield()
             }
+            await processAdvance?()
             expectationBeforeCompletion?()
             switch completeWith?() {
             case let .success(result):
@@ -294,6 +298,55 @@ extension AsyncSpy {
         }
     }
 
+    public struct Process
+    func async<T: Sendable>(
+        yieldCount: Int = 1,
+        at index: Int = 0,
+        processes: [(process: () async throws -> T, processAdvance: (() async -> Void)?)],
+        expectationBeforeCompletion: (() -> Void)? = nil,
+        completeWith: (() -> Swift.Result<Result, Error>)? = nil,
+        expectationAfterCompletion: (([T]) -> Void)? = nil,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) async throws {
+        try await withMainSerialExecutor {
+            var tasks: [Task<T, Error>] = []
+            for (process, advance) in processes {
+                let task = Task { try await process() }
+                tasks.append(task)
+                for _ in 0..<yieldCount {
+                    await Task.megaYield()
+                }
+                await advance?()
+            }
+            expectationBeforeCompletion?()
+            switch completeWith?() {
+            case let .success(result):
+                complete(
+                    with: result,
+                    at: index,
+                    sourceLocation: sourceLocation
+                )
+
+            case let .failure(error):
+                complete(
+                    with: error,
+                    at: index,
+                    sourceLocation: sourceLocation
+                )
+
+            case .none:
+                break
+            }
+
+            var result: [T] = []
+            for task in tasks {
+                let value = try await task.value
+                result.append(value)
+            }
+            expectationAfterCompletion?(result)
+        }
+    }
+
     /// Executes an asynchronous process with controlled timing and completion at a specific index.
     ///
     /// - Parameters:
@@ -307,6 +360,7 @@ extension AsyncSpy {
         yieldCount: Int = 1,
         at index: Int = 0,
         process: @escaping () -> Void,
+        processAdvance: (() async -> Void)? = nil,
         expectationBeforeCompletion: (() -> Void)? = nil,
         completeWith: (() -> Swift.Result<Result, Error>)? = nil,
         expectationAfterCompletion: (() -> Void)? = nil,
@@ -314,7 +368,10 @@ extension AsyncSpy {
     ) async {
         await withMainSerialExecutor {
             process()
-            await Task.megaYield(count: yieldCount)
+            for _ in 0..<yieldCount {
+                await Task.megaYield()
+            }
+            await processAdvance?()
             expectationBeforeCompletion?()
             switch completeWith?() {
             case let .success(result):
