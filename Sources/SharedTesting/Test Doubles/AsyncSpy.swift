@@ -142,7 +142,7 @@ import Testing
 @MainActor
 public final class AsyncSpy<Result> where Result: Sendable {
     typealias ContinuationType = CheckedContinuation<Result, Error>
-    private var messages: [(parameters: [any Sendable], continuation: ContinuationType)] = []
+    private var messages: [(parameters: [(any Sendable)?], continuation: ContinuationType)] = []
 
     /// The number of times the `perform` method has been called.
     public var performCallCount: Int {
@@ -156,7 +156,7 @@ public final class AsyncSpy<Result> where Result: Sendable {
     ///
     /// - Parameter index: The index of the call to retrieve parameters for.
     /// - Returns: An array of `Sendable` parameters.
-    public func params(at index: Int) -> [any Sendable] {
+    public func params(at index: Int) -> [(any Sendable)?] {
         messages[index].parameters
     }
 
@@ -168,7 +168,7 @@ public final class AsyncSpy<Result> where Result: Sendable {
     /// - Throws: An error if the operation fails.
     @Sendable
     public func perform<each Parameter: Sendable>(_ parameters: repeat each Parameter) async throws -> Result {
-        var packed: [any Sendable] = []
+        var packed: [(any Sendable)?] = []
 
         func add(element: some Sendable) {
             packed.append(element)
