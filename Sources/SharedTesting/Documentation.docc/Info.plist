@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CDAppleDefaultAvailability</key>
+	<dict>
+		<key>SharedTesting</key>
+		<array>
+			<dict>
+				<key>name</key>
+				<string>iOS</string>
+				<key>version</key>
+				<string>17.0</string>
+			</dict>
+			<dict>
+				<key>name</key>
+				<string>macOS</string>
+				<key>version</key>
+				<string>14.0</string>
+			</dict>
+			<dict>
+				<key>name</key>
+				<string>macCatalyst</string>
+				<key>version</key>
+				<string>17.0</string>
+			</dict>
+		</array>
+	</dict>
+</dict>
+</plist>
