@@ -270,7 +270,7 @@ extension AsyncSpy {
     ) async throws {
         try await withMainSerialExecutor {
             let task = Task { try await process() }
-            for _ in 0..<yieldCount {
+            for _ in 0 ..< yieldCount {
                 await Task.megaYield()
             }
             await processAdvance?()
@@ -298,7 +298,7 @@ extension AsyncSpy {
         }
     }
 
-    public struct AdvancingProcess<T: Sendable> {
+    struct AdvancingProcess<T: Sendable> {
         let process: () async throws -> T
         let processAdvance: (() async -> Void)?
 
@@ -322,7 +322,7 @@ extension AsyncSpy {
             for advancingProcess in processes {
                 let task = Task { try await advancingProcess.process() }
                 tasks.append(task)
-                for _ in 0..<yieldCount {
+                for _ in 0 ..< yieldCount {
                     await Task.megaYield()
                 }
                 if let advance = advancingProcess.processAdvance {
@@ -379,7 +379,7 @@ extension AsyncSpy {
     ) async {
         await withMainSerialExecutor {
             process()
-            for _ in 0..<yieldCount {
+            for _ in 0 ..< yieldCount {
                 await Task.megaYield()
             }
             await processAdvance?()

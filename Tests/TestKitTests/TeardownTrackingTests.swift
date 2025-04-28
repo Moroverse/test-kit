@@ -1,10 +1,10 @@
 // TeardownTrackingTests.swift
 // Copyright (c) 2025 Moroverse
-// Created by Daniel Moro on 2025-04-03 09:14 GMT.
+// Created by Daniel Moro on 2025-04-05 06:52 GMT.
 
 import Foundation
-import TestKit
 import Testing
+import TestKit
 
 class ClassA {
     var b: ClassB?

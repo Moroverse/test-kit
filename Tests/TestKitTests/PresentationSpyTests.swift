@@ -1,6 +1,6 @@
 // PresentationSpyTests.swift
 // Copyright (c) 2025 Moroverse
-// Created by Daniel Moro on 2025-04-05 06:12 GMT.
+// Created by Daniel Moro on 2025-04-05 06:52 GMT.
 
 //
 //  PresentationSpyTests.swift
@@ -8,8 +8,8 @@
 //
 //  Created by Daniel Moro on 5.4.25..
 #if canImport(UIKit)
-    import TestKit
     import Testing
+    import TestKit
     import UIKit
 
     @MainActor

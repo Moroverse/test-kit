@@ -18,7 +18,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-custom-dump.git", from: "1.3.3"),
-        .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.3.1"),
+        .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.3.1")
 //        .package(url: "https://github.com/SimplyDanny/SwiftLintPlugins", from: "0.58.2")
     ],
     targets: [
@@ -32,14 +32,14 @@ let package = Package(
                 .linkedFramework("Testing")
             ],
             plugins: [
-//                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins")
+                //                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins")
             ]
         ),
         .testTarget(
             name: "TestKitTests",
             dependencies: ["TestKit"],
             plugins: [
-//                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins")
+                //                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins")
             ]
         )
     ]

@@ -1,6 +1,6 @@
 // SequentialUUIDGeneratorTests.swift
 // Copyright (c) 2025 Moroverse
-// Created by Daniel Moro on 2025-04-05 04:44 GMT.
+// Created by Daniel Moro on 2025-04-05 06:52 GMT.
 
 import Foundation
 import Testing

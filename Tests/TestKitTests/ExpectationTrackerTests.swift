@@ -1,9 +1,6 @@
-//
-//  ExpectationTrackerTests.swift
-//  shared-testing
-//
-//  Created by Daniel Moro on 6.4.25..
-//
+// ExpectationTrackerTests.swift
+// Copyright (c) 2025 Moroverse
+// Created by Daniel Moro on 2025-04-06 10:39 GMT.
 
 import Foundation
 import Testing
