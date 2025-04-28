@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "shared-testing",
+    name: "test-kit",
     platforms: [
         .iOS(.v17),
         .macCatalyst(.v17),
@@ -12,19 +12,18 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "SharedTesting",
-            targets: ["SharedTesting"]
+            name: "TestKit",
+            targets: ["TestKit"]
         )
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-custom-dump.git", from: "1.3.3"),
         .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.3.1"),
-        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.3")
 //        .package(url: "https://github.com/SimplyDanny/SwiftLintPlugins", from: "0.58.2")
     ],
     targets: [
         .target(
-            name: "SharedTesting",
+            name: "TestKit",
             dependencies: [
                 .product(name: "CustomDump", package: "swift-custom-dump"),
                 .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras")
@@ -37,8 +36,8 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "SharedTestingTests",
-            dependencies: ["SharedTesting"],
+            name: "TestKitTests",
+            dependencies: ["TestKit"],
             plugins: [
 //                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins")
             ]

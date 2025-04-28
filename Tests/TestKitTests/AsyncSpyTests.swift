@@ -3,7 +3,7 @@
 // Created by Daniel Moro on 2025-04-05 05:07 GMT.
 
 import Foundation
-import SharedTesting
+import TestKit
 import Testing
 
 private struct Object {}

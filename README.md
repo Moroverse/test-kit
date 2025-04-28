@@ -1,4 +1,4 @@
-# SharedTesting
+# TestKit
 
 A comprehensive Swift testing utilities library designed to simplify and enhance unit testing with Swift Testing framework.
 

@@ -8,7 +8,7 @@
 //
 //  Created by Daniel Moro on 5.4.25..
 #if canImport(UIKit)
-    import SharedTesting
+    import TestKit
     import Testing
     import UIKit
 

@@ -1,10 +1,10 @@
-# ``SharedTesting``
+# ``TestKit``
 
 A comprehensive testing utility package designed to simplify and enhance the process of writing unit tests in Swift.
 
 ## Overview
 
-``SharedTesting`` provides a set of utilities and extensions to streamline the creation and verification of unit tests. It includes functionalities for JSON data creation, memory leak tracking, asynchronous process handling, and more. This package is particularly useful for developers looking to improve the reliability and readability of their test code.
+`TestKit` provides a set of utilities and extensions to streamline the creation and verification of unit tests. It includes functionalities for JSON data creation, memory leak tracking, asynchronous process handling, and more. This package is particularly useful for developers looking to improve the reliability and readability of their test code.
 
 ## Topics
 

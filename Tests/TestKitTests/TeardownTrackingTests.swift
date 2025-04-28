@@ -3,7 +3,7 @@
 // Created by Daniel Moro on 2025-04-03 09:14 GMT.
 
 import Foundation
-import SharedTesting
+import TestKit
 import Testing
 
 class ClassA {
