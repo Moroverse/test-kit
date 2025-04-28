@@ -16,7 +16,7 @@ A comprehensive Swift testing utilities library designed to simplify and enhance
 Add this package to your Swift package dependencies:
 
 ```swift
-.package(url: "https://github.com/moroverse/shared-testing.git", from: "0.1.0")
+.package(url: "https://github.com/moroverse/test-kit.git", from: "0.3.1")
 ```
 
 Then add the dependency to your target:
@@ -24,7 +24,7 @@ Then add the dependency to your target:
 ```swift
 .target(
     name: "YourTarget",
-    dependencies: ["SharedTesting"]
+    dependencies: ["TestKit"]
 )
 ```
 
