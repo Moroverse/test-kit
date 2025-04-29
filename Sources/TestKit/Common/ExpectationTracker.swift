@@ -36,7 +36,7 @@ public struct ExpectationTracker<T: Equatable & Sendable, E: Error & Equatable>:
         column: Int = #column
     ) {
         self.action = action
-        self.sourceLocation = SourceLocation(fileID: fileID, filePath: file, line: line, column: column)
+        sourceLocation = SourceLocation(fileID: fileID, filePath: file, line: line, column: column)
     }
 
     /// Specifies the expected result of the asynchronous operation.

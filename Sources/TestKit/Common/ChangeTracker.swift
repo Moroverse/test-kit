@@ -40,7 +40,7 @@ public struct ChangeTracker<SUT, T: Equatable> {
     ) {
         self.property = property
         self.sut = sut
-        self.sourceLocation = SourceLocation(fileID: fileID, filePath: file, line: line, column: column)
+        sourceLocation = SourceLocation(fileID: fileID, filePath: file, line: line, column: column)
     }
 
     /// Sets up the initial state before tracking changes.
