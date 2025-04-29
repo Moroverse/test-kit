@@ -20,12 +20,23 @@ public struct ExpectationTracker<T: Equatable & Sendable, E: Error & Equatable>:
     private var event: (() async -> Void)?
     private let sourceLocation: SourceLocation
 
-    init(
+    public init(
         _ action: @escaping @Sendable () async throws -> T,
         sourceLocation: SourceLocation = #_sourceLocation
     ) {
         self.action = action
         self.sourceLocation = sourceLocation
+    }
+
+    public init(
+        _ action: @escaping @Sendable () async throws -> T,
+        fileID: String = #fileID,
+        file: String = #filePath,
+        line: Int = #line,
+        column: Int = #column
+    ) {
+        self.action = action
+        self.sourceLocation = SourceLocation(fileID: fileID, filePath: file, line: line, column: column)
     }
 
     /// Specifies the expected result of the asynchronous operation.

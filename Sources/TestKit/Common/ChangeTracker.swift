@@ -20,7 +20,7 @@ public struct ChangeTracker<SUT, T: Equatable> {
     private var finalExpectation: (() -> T)?
     private let sourceLocation: SourceLocation
 
-    init(
+    public init(
         of property: KeyPath<SUT, T>,
         in sut: SUT,
         sourceLocation: SourceLocation = #_sourceLocation
@@ -28,6 +28,19 @@ public struct ChangeTracker<SUT, T: Equatable> {
         self.property = property
         self.sut = sut
         self.sourceLocation = sourceLocation
+    }
+
+    public init(
+        of property: KeyPath<SUT, T>,
+        in sut: SUT,
+        fileID: String = #fileID,
+        file: String = #filePath,
+        line: Int = #line,
+        column: Int = #column
+    ) {
+        self.property = property
+        self.sut = sut
+        self.sourceLocation = SourceLocation(fileID: fileID, filePath: file, line: line, column: column)
     }
 
     /// Sets up the initial state before tracking changes.
