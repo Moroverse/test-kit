@@ -5,12 +5,12 @@
 @preconcurrency import CoreData
 import Testing
 
-package actor PersistenceTestContainerManager {
-    let container: NSPersistentContainer
+public actor PersistenceTestContainerManager {
+    public let container: NSPersistentContainer
 
-    @TaskLocal static var current: PersistenceTestContainerManager?
+    @TaskLocal public static var current: PersistenceTestContainerManager?
 
-    init(with model: NSManagedObjectModel) {
+    public init(with model: NSManagedObjectModel) {
         let storeURL = URL(fileURLWithPath: "/dev/null")
         let container = NSPersistentContainer(name: "TestContainer", managedObjectModel: model)
         let descriptor = NSPersistentStoreDescription(url: storeURL)
@@ -20,7 +20,7 @@ package actor PersistenceTestContainerManager {
     }
 }
 
-package extension NSManagedObjectContext {
+public extension NSManagedObjectContext {
     enum Error: Swift.Error {
         case missingContainer
     }
