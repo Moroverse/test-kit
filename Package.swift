@@ -38,9 +38,6 @@ let package = Package(
         .testTarget(
             name: "TestKitTests",
             dependencies: ["TestKit"],
-            resources: [
-                .process("Resources/TestDataModel.xcdatamodeld")
-            ],
             plugins: [
                 //                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins")
             ]

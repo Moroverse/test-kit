@@ -7,12 +7,33 @@ import Testing
 
 enum Modelmanager {
     static let model: NSManagedObjectModel = {
-        let bundle = Bundle.module
-        guard let modelURL = bundle.url(forResource: "TestDataModel", withExtension: "momd") else {
-            fatalError("Failed to find TestDataModel.momd in bundle")
-        }
-        return NSManagedObjectModel(contentsOf: modelURL)!
+        let model = NSManagedObjectModel()
+        let entityDescription = NSEntityDescription()
+        entityDescription.name = "TestObjectA"
+        entityDescription.managedObjectClassName = "TestObjectA"
+
+        let nameAttribute = NSAttributeDescription()
+        nameAttribute.name = "name"
+        nameAttribute.attributeType = .stringAttributeType
+        nameAttribute.isOptional = true
+        entityDescription.properties.append(nameAttribute)
+
+        let idAttribute = NSAttributeDescription()
+        idAttribute.name = "id"
+        idAttribute.attributeType = .UUIDAttributeType
+        idAttribute.isOptional = false
+        entityDescription.properties.append(idAttribute)
+
+        model.entities.append(entityDescription)
+
+        return model
     }()
+}
+
+@objc(TestObjectA)
+class TestObjectA: NSManagedObject {
+    @NSManaged var id: UUID
+    @NSManaged var name: String?
 }
 
 @Suite("When persistenceTestContainer is not declared in scope")
