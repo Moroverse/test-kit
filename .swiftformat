@@ -45,3 +45,4 @@
 --enable initCoderUnavailable
 --disable wrapMultilineStatementBraces
 --enable blankLineAfterSwitchCase
+--enable acronyms

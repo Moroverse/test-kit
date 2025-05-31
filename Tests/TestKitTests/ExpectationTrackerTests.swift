@@ -65,7 +65,7 @@ private actor CallCollector {
 @Suite("ExpectationTracker Tests", .teardownTracking())
 struct ExpectationTrackerTests {
     @Test("expect tracks async operation")
-    func testExpectTracksSuccessfulAsyncOperation() async throws {
+    func expectTracksSuccessfulAsyncOperation() async throws {
         let networkService = MockNetworkService()
         await Test.trackForMemoryLeaks(networkService)
 

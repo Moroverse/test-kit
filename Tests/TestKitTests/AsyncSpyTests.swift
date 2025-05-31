@@ -69,7 +69,7 @@ extension AsyncSpy: ProtocolA where Result == Object {
 @MainActor
 struct AsyncSpyTests {
     @Test("AsyncSpy records calls in non async method")
-    func testAsyncSpyRecordsCalls() async throws {
+    func asyncSpyRecordsCalls() async throws {
         let object = Object()
         let spy = AsyncSpy<Object>()
         let processor = ProcessorClassA(processor: spy, param: "P", param2: 3)
@@ -94,7 +94,7 @@ struct AsyncSpyTests {
     }
 
     @Test("AsyncSpy records calls in async method")
-    func testAsyncSpyAsyncRecordsCalls() async throws {
+    func asyncSpyAsyncRecordsCalls() async throws {
         let object = Object()
         let spy = AsyncSpy<Object>()
         let processor = AsyncProcessorClassA(processor: spy, param: "P", param2: 3)

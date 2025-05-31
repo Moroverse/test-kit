@@ -8,7 +8,7 @@ import Testing
 @Suite("SequentialUUIDGeneration Tests")
 struct SequentialUUIDGenerationTests {
     @Test("UUID incrementing produces sequential UUIDs", .sequentialUUIDGeneration())
-    func testUUIDIncrementing() async throws {
+    func uuidIncrementing() async throws {
         // Reset the counter before test
         await UUID.reset()
 
@@ -26,7 +26,7 @@ struct SequentialUUIDGenerationTests {
     }
 
     @Test("UUID reset resets the counter to zero", .sequentialUUIDGeneration())
-    func testUUIDReset() async throws {
+    func uuidReset() async throws {
         // Reset the counter initially
         await UUID.reset()
 
@@ -45,7 +45,7 @@ struct SequentialUUIDGenerationTests {
     }
 
     @Test("UUID incrementing works with larger numbers", .sequentialUUIDGeneration())
-    func testUUIDIncrementingWithLargerNumbers() async throws {
+    func uuidIncrementingWithLargerNumbers() async throws {
         await UUID.reset()
 
         // Skip ahead to test formatting of larger numbers

@@ -2,11 +2,6 @@
 // Copyright (c) 2025 Moroverse
 // Created by Daniel Moro on 2025-04-05 06:52 GMT.
 
-//
-//  PresentationSpyTests.swift
-//  shared-testing
-//
-//  Created by Daniel Moro on 5.4.25..
 #if canImport(UIKit)
     import Testing
     import TestKit
@@ -16,7 +11,7 @@
     @Suite("PresentationSpy Tests", .teardownTracking(), .serialized)
     struct PresentationSpyTests {
         @Test("PresentationSpy tracks view controller presentation")
-        func testPresentationSpyTracksPresentation() async throws {
+        func presentationSpyTracksPresentation() async throws {
             // Setup
             let spy = PresentationSpy()
             await Test.trackForMemoryLeaks(spy)
@@ -37,7 +32,7 @@
         }
 
         @Test("PresentationSpy tracks view controller dismissal")
-        func testPresentationSpyTracksDismissal() async throws {
+        func presentationSpyTracksDismissal() async throws {
             // Setup
             InstantAnimationStub().startIntercepting()
             let spy = PresentationSpy()
