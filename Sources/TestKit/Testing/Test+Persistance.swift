@@ -1,6 +1,6 @@
 // Test+Persistance.swift
 // Copyright (c) 2025 Moroverse
-// Created by Daniel Moro on 2025-05-30 05:05 GMT.
+// Created by Daniel Moro on 2025-05-31 08:52 GMT.
 
 @preconcurrency import CoreData
 import Testing
@@ -39,10 +39,27 @@ public extension NSManagedObjectContext {
 
         manager.container.viewContext.reset()
     }
+
+    static func withTestContext(_ body: (_ context: NSManagedObjectContext) throws -> Void) throws {
+        guard let manager = PersistenceTestContainerManager.current else {
+            throw Error.missingContainer
+        }
+
+        let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+        context.parent = manager.container.viewContext
+
+        try body(context)
+
+        manager.container.viewContext.reset()
+    }
 }
 
 public struct PersistenceTestContainerTrait: SuiteTrait, TestScoping {
     let model: NSManagedObjectModel
+
+    public init(model: NSManagedObjectModel) {
+        self.model = model
+    }
 
     public func provideScope(for _: Test, testCase _: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
         let manager = PersistenceTestContainerManager(with: model)
