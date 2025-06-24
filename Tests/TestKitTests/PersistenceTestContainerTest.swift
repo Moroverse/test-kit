@@ -36,6 +36,7 @@ class TestObjectA: NSManagedObject {
     @NSManaged var name: String?
 }
 
+@MainActor
 @Suite("When persistenceTestContainer is not declared in scope")
 struct MissingPersistenceTestContainerTest {
     @Test(
@@ -113,6 +114,7 @@ struct PersistenceTestContainerTest {
         }
     }
 
+    @MainActor
     @Test(
         "Test Context exists and can create objects",
         .testContext()
@@ -133,6 +135,7 @@ struct PersistenceTestContainerTest {
         #expect(context.registeredObjects.count == 1, "Context should have exactly one registered object")
     }
 
+    @MainActor
     @Test(
         "Changes are rolled back between tests",
         .testContext()

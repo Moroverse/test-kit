@@ -20,6 +20,7 @@ public actor PersistenceTestContainerManager {
     }
 }
 
+@MainActor
 public extension NSManagedObjectContext {
     enum Error: Swift.Error {
         case missingContainer
@@ -27,7 +28,7 @@ public extension NSManagedObjectContext {
 
     @TaskLocal static var test: NSManagedObjectContext = .init(concurrencyType: .mainQueueConcurrencyType)
 
-    static func withTestContext(_ body: (_ context: NSManagedObjectContext) async throws -> Void) async throws {
+    static func withTestContext(_ body: @MainActor (_ context: NSManagedObjectContext) async throws -> Void) async throws {
         guard let manager = PersistenceTestContainerManager.current else {
             throw Error.missingContainer
         }
@@ -40,7 +41,7 @@ public extension NSManagedObjectContext {
         manager.container.viewContext.reset()
     }
 
-    static func withTestContext(_ body: (_ context: NSManagedObjectContext) throws -> Void) throws {
+    static func withTestContext(_ body: @MainActor (_ context: NSManagedObjectContext) throws -> Void) throws {
         guard let manager = PersistenceTestContainerManager.current else {
             throw Error.missingContainer
         }
