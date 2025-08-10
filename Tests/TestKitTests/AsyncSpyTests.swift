@@ -61,7 +61,7 @@ private class AsyncProcessorClassA {
 
 extension AsyncSpy: ProtocolA where Result == Object {
     func method(param: String, param2: Int) async throws -> Object {
-        try await perform(param, param2)
+        try await perform(param, param2, tag: "method")
     }
 }
 
@@ -88,9 +88,11 @@ struct AsyncSpyTests {
                 calls.append("Called on After with \($0)")
             }
         #expect(calls == ["Called Process", "Called On Before", "Called Complete", "Called on After with ()"])
-        #expect(spy.performCallCount == 1)
-        #expect(spy.params(at: 0)[0] as? String == "P")
-        #expect(spy.params(at: 0)[1] as? Int == 3)
+        #expect(spy.callCount == 1)
+        let (params, tag) = spy.params(at: 0)
+        #expect(params[0] as? String == "P")
+        #expect(params[1] as? Int == 3)
+        #expect(tag == "method")
     }
 
     @Test("AsyncSpy records calls in async method")
@@ -129,8 +131,10 @@ struct AsyncSpyTests {
                 "Called on After Expectation with ()"
             ]
         )
-        #expect(spy.performCallCount == 1)
-        #expect(spy.params(at: 0)[0] as? String == "P")
-        #expect(spy.params(at: 0)[1] as? Int == 3)
+        #expect(spy.callCount == 1)
+        let (params, tag) = spy.params(at: 0)
+        #expect(params[0] as? String == "P")
+        #expect(params[1] as? Int == 3)
+        #expect(tag == "method")
     }
 }
