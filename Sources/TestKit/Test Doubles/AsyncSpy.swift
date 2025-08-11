@@ -142,11 +142,15 @@ import Testing
 @MainActor
 public final class AsyncSpy<Result> where Result: Sendable {
     typealias ContinuationType = CheckedContinuation<Result, Error>
-    private var messages: [(parameters: [(any Sendable)?], continuation: ContinuationType)] = []
+    private var messages: [(parameters: [(any Sendable)?], continuation: ContinuationType, tag: String?)] = []
 
     /// The number of times the `perform` method has been called.
-    public var performCallCount: Int {
+    public var callCount: Int {
         messages.count
+    }
+
+    public func callCount(forTag tag: String) -> Int {
+        messages.filter { $0.tag == tag }.count
     }
 
     /// Initializes a new instance of `AsyncSpy`.
@@ -156,8 +160,10 @@ public final class AsyncSpy<Result> where Result: Sendable {
     ///
     /// - Parameter index: The index of the call to retrieve parameters for.
     /// - Returns: An array of `Sendable` parameters.
-    public func params(at index: Int) -> [(any Sendable)?] {
-        messages[index].parameters
+    public func params(at index: Int) -> (params: [(any Sendable)?], tag: String?) {
+        let params = messages[index].parameters
+        let tag = messages[index].tag
+        return (params, tag)
     }
 
     /// Simulates an asynchronous operation, capturing the parameters and providing a continuation.
@@ -167,7 +173,7 @@ public final class AsyncSpy<Result> where Result: Sendable {
     /// - Returns: The result of the asynchronous operation.
     /// - Throws: An error if the operation fails.
     @Sendable
-    public func perform<each Parameter: Sendable>(_ parameters: repeat each Parameter) async throws -> Result {
+    public func perform<each Parameter: Sendable>(_ parameters: repeat each Parameter, tag: String? = nil) async throws -> Result {
         var packed: [(any Sendable)?] = []
 
         func add(element: some Sendable) {
@@ -177,7 +183,7 @@ public final class AsyncSpy<Result> where Result: Sendable {
         repeat add(element: each parameters)
 
         return try await withCheckedThrowingContinuation { continuation in
-            messages.append((packed, continuation))
+            messages.append((packed, continuation, tag))
         }
     }
 

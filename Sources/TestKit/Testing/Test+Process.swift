@@ -47,7 +47,7 @@ extension Test {
         try await withMainSerialExecutor {
             let task = Task { try await process() }
             for _ in 0 ..< yieldCount {
-                await Task.megaYield()
+                await Task.yield()
             }
             onBeforeCompletion?()
             let value = try await task.value

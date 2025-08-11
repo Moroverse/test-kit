@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.2
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -18,8 +18,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-custom-dump.git", from: "1.3.3"),
-        .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.3.1")
-//        .package(url: "https://github.com/SimplyDanny/SwiftLintPlugins", from: "0.58.2")
+        .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.3.1"),
+        .package(url: "https://github.com/Kolos65/Mockable.git", from: "0.4.0")
     ],
     targets: [
         .target(
@@ -30,16 +30,15 @@ let package = Package(
             ],
             linkerSettings: [
                 .linkedFramework("Testing")
-            ],
-            plugins: [
-                //                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins")
             ]
         ),
         .testTarget(
             name: "TestKitTests",
-            dependencies: ["TestKit"],
-            plugins: [
-                //                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins")
+            dependencies: [
+                "TestKit",
+                .product(name: "Mockable", package: "mockable")
+            ], swiftSettings: [
+                .define("MOCKING", .when(configuration: .debug))
             ]
         )
     ]
