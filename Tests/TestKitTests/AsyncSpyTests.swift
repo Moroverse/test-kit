@@ -6,10 +6,11 @@ import Foundation
 import Testing
 import TestKit
 
-private struct Object {}
+private struct Object: Sendable {}
 @MainActor
 private protocol ProtocolA {
     func method(param: String, param2: Int) async throws -> Object
+    func method2(param: Object) async throws
 }
 
 @MainActor
@@ -59,8 +60,12 @@ private class AsyncProcessorClassA {
     }
 }
 
-extension AsyncSpy: ProtocolA where Result == Object {
-    func method(param: String, param2: Int) async throws -> Object {
+extension AsyncSpy: ProtocolA {
+    fileprivate func method2(param: Object) async throws {
+        try await perform(param)
+    }
+    
+    fileprivate func method(param: String, param2: Int) async throws -> Object {
         try await perform(param, param2, tag: "method")
     }
 }
@@ -71,7 +76,7 @@ struct AsyncSpyTests {
     @Test("AsyncSpy records calls in non async method")
     func asyncSpyRecordsCalls() async throws {
         let object = Object()
-        let spy = AsyncSpy<Object>()
+        let spy = AsyncSpy()
         let processor = ProcessorClassA(processor: spy, param: "P", param2: 3)
         var calls: [String] = []
 
@@ -98,7 +103,7 @@ struct AsyncSpyTests {
     @Test("AsyncSpy records calls in async method")
     func asyncSpyAsyncRecordsCalls() async throws {
         let object = Object()
-        let spy = AsyncSpy<Object>()
+        let spy = AsyncSpy()
         let processor = AsyncProcessorClassA(processor: spy, param: "P", param2: 3)
         var calls: [String] = []
 
