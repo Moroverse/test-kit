@@ -140,8 +140,8 @@ import Testing
 /// 4. Use the `at` parameter when dealing with multiple async operations in a single test.
 
 @MainActor
-public final class AsyncSpy<Result> where Result: Sendable {
-    typealias ContinuationType = CheckedContinuation<Result, Error>
+public final class AsyncSpy {
+    typealias ContinuationType = CheckedContinuation<any Sendable, Error>
     private var messages: [(parameters: [(any Sendable)?], continuation: ContinuationType, tag: String?)] = []
 
     /// The number of times the `perform` method has been called.
@@ -173,7 +173,7 @@ public final class AsyncSpy<Result> where Result: Sendable {
     /// - Returns: The result of the asynchronous operation.
     /// - Throws: An error if the operation fails.
     @Sendable
-    public func perform<each Parameter: Sendable>(_ parameters: repeat each Parameter, tag: String? = nil) async throws -> Result {
+    public func perform<Result: Sendable, each Parameter: Sendable>(_ parameters: repeat each Parameter, tag: String? = nil) async throws -> Result {
         var packed: [(any Sendable)?] = []
 
         func add(element: some Sendable) {
@@ -182,7 +182,28 @@ public final class AsyncSpy<Result> where Result: Sendable {
 
         repeat add(element: each parameters)
 
-        return try await withCheckedThrowingContinuation { continuation in
+        let result = try await withCheckedThrowingContinuation { continuation in
+            messages.append((packed, continuation, tag))
+        } as? Result
+
+        guard let result else {
+            fatalError("Missing result from async call")
+        }
+        
+        return result
+    }
+
+    @Sendable
+    public func perform<each Parameter: Sendable>(_ parameters: repeat each Parameter, tag: String? = nil) async throws {
+        var packed: [(any Sendable)?] = []
+
+        func add(element: some Sendable) {
+            packed.append(element)
+        }
+
+        repeat add(element: each parameters)
+
+        _ = try await withCheckedThrowingContinuation { continuation in
             messages.append((packed, continuation, tag))
         }
     }
@@ -209,7 +230,7 @@ public final class AsyncSpy<Result> where Result: Sendable {
     /// - Parameters:
     ///   - result: The result to complete the operation with.
     ///   - index: The index of the operation to complete (default is 0).
-    public func complete(
+    public func complete<Result: Sendable>(
         with result: Result,
         at index: Int = 0,
         sourceLocation: SourceLocation = #_sourceLocation
@@ -233,7 +254,7 @@ extension AsyncSpy {
     ///   - completeWith: A closure that provides the result or error to complete with.
     ///   - expectationAfterCompletion: A closure to execute after completing the operation.
     /// - Throws: Any error that occurs during the process.
-    func async<T: Sendable>(
+    func async<T: Sendable, Result: Sendable>(
         yieldCount: Int = 1,
         process: @escaping () async throws -> T,
         processAdvance: (() async -> Void)? = nil,
@@ -264,7 +285,7 @@ extension AsyncSpy {
     ///   - completeWith: A closure that provides the result or error to complete with.
     ///   - expectationAfterCompletion: A closure to execute after completing the operation.
     /// - Throws: Any error that occurs during the process.
-    func async<T: Sendable>(
+    func async<T: Sendable, Result: Sendable>(
         yieldCount: Int = 1,
         at index: Int = 0,
         process: @escaping () async throws -> T,
@@ -314,7 +335,7 @@ extension AsyncSpy {
         }
     }
 
-    func async<T: Sendable>(
+    func async<T: Sendable, Result: Sendable>(
         yieldCount: Int = 1,
         at index: Int = 0,
         processes: [AdvancingProcess<T>],
@@ -373,7 +394,7 @@ extension AsyncSpy {
     ///   - expectationBeforeCompletion: A closure to execute before completing the operation.
     ///   - completeWith: A closure that provides the result or error to complete with.
     ///   - expectationAfterCompletion: A closure to execute after completing the operation.
-    func async(
+    func async<Result: Sendable>(
         yieldCount: Int = 1,
         at index: Int = 0,
         process: @escaping () -> Void,
