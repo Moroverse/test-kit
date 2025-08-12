@@ -259,7 +259,7 @@ extension AsyncSpy {
         try await withMainSerialExecutor {
             let task = Task { try await process() }
             for _ in 0 ..< yieldCount {
-                await Task.megaYield()
+                await Task.yield()
             }
             await processAdvance?()
             expectationBeforeCompletion?()
@@ -282,6 +282,7 @@ extension AsyncSpy {
                 break
             }
             let value = try await task.value
+            await Task.yield()
             expectationAfterCompletion?(value)
         }
     }
@@ -343,7 +344,7 @@ extension AsyncSpy {
                 let task = Task { try await advancingProcess.process() }
                 tasks.append(task)
                 for _ in 0 ..< yieldCount {
-                    await Task.megaYield()
+                    await Task.yield()
                 }
                 if let advance = advancingProcess.processAdvance {
                     await advance()
@@ -374,6 +375,7 @@ extension AsyncSpy {
                 let value = try await task.value
                 result.append(value)
             }
+            await Task.yield()
             expectationAfterCompletion?(result)
         }
     }
