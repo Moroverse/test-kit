@@ -245,54 +245,15 @@ public final class AsyncSpy {
 
 public
 extension AsyncSpy {
-    /// Executes an asynchronous process with controlled timing and completion.
-    ///
-    /// - Parameters:
-    ///   - yieldCount: The number of times to yield before completing (default is 1).
-    ///   - process: The asynchronous process to execute.
-    ///   - expectationBeforeCompletion: A closure to execute before completing the operation.
-    ///   - completeWith: A closure that provides the result or error to complete with.
-    ///   - expectationAfterCompletion: A closure to execute after completing the operation.
-    /// - Throws: Any error that occurs during the process.
-    func async<T: Sendable, Result: Sendable>(
-        yieldCount: Int = 1,
-        process: @escaping () async throws -> T,
-        processAdvance: (() async -> Void)? = nil,
-        expectationBeforeCompletion: (() -> Void)? = nil,
-        completeWith: (() -> Swift.Result<Result, Error>)? = nil,
-        expectationAfterCompletion: ((T) -> Void)? = nil,
-        sourceLocation: SourceLocation = #_sourceLocation
-    ) async throws {
-        try await async(
-            yieldCount: yieldCount,
-            at: 0,
-            process: process,
-            processAdvance: processAdvance,
-            expectationBeforeCompletion: expectationBeforeCompletion,
-            completeWith: completeWith,
-            expectationAfterCompletion: expectationAfterCompletion,
-            sourceLocation: sourceLocation
-        )
-    }
 
-    /// Executes an asynchronous process with controlled timing and completion at a specific index.
-    ///
-    /// - Parameters:
-    ///   - yieldCount: The number of times to yield before completing (default is 1).
-    ///   - index: The index of the operation to complete (default is 0).
-    ///   - process: The asynchronous process to execute.
-    ///   - expectationBeforeCompletion: A closure to execute before completing the operation.
-    ///   - completeWith: A closure that provides the result or error to complete with.
-    ///   - expectationAfterCompletion: A closure to execute after completing the operation.
-    /// - Throws: Any error that occurs during the process.
-    func async<T: Sendable, Result: Sendable>(
+    private func _async<ActionResult: Sendable, Result: Sendable>(
         yieldCount: Int = 1,
         at index: Int = 0,
-        process: @escaping () async throws -> T,
+        process: @escaping () async throws -> ActionResult,
         processAdvance: (() async -> Void)? = nil,
         expectationBeforeCompletion: (() -> Void)? = nil,
         completeWith: (() -> Swift.Result<Result, Error>)? = nil,
-        expectationAfterCompletion: ((T) -> Void)? = nil,
+        expectationAfterCompletion: ((ActionResult) -> Void)? = nil,
         sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
         try await withMainSerialExecutor {
@@ -325,6 +286,38 @@ extension AsyncSpy {
         }
     }
 
+    /// Executes an asynchronous process with controlled timing and completion at a specific index.
+    ///
+    /// - Parameters:
+    ///   - yieldCount: The number of times to yield before completing (default is 1).
+    ///   - index: The index of the operation to complete (default is 0).
+    ///   - process: The asynchronous process to execute.
+    ///   - expectationBeforeCompletion: A closure to execute before completing the operation.
+    ///   - completeWith: A closure that provides the result or error to complete with.
+    ///   - expectationAfterCompletion: A closure to execute after completing the operation.
+    /// - Throws: Any error that occurs during the process.
+    func async<ActionResult: Sendable, Result: Sendable>(
+        yieldCount: Int = 1,
+        at index: Int = 0,
+        process: @escaping () async throws -> ActionResult,
+        processAdvance: (() async -> Void)? = nil,
+        expectationBeforeCompletion: (() -> Void)? = nil,
+        completeWith: (() -> Swift.Result<Result, Error>)? = nil,
+        expectationAfterCompletion: ((ActionResult) -> Void)? = nil,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) async throws {
+        try await _async(
+            yieldCount: yieldCount,
+            at: index,
+            process: process,
+            processAdvance: processAdvance,
+            expectationBeforeCompletion: expectationBeforeCompletion,
+            completeWith: completeWith,
+            expectationAfterCompletion: expectationAfterCompletion,
+            sourceLocation: sourceLocation
+        )
+    }
+
     struct AdvancingProcess<T: Sendable> {
         let process: () async throws -> T
         let processAdvance: (() async -> Void)?
@@ -335,17 +328,17 @@ extension AsyncSpy {
         }
     }
 
-    func async<T: Sendable, Result: Sendable>(
+    func async<ActionResult: Sendable, Result: Sendable>(
         yieldCount: Int = 1,
         at index: Int = 0,
-        processes: [AdvancingProcess<T>],
+        processes: [AdvancingProcess<ActionResult>],
         expectationBeforeCompletion: (() -> Void)? = nil,
         completeWith: (() -> Swift.Result<Result, Error>)? = nil,
-        expectationAfterCompletion: (([T]) -> Void)? = nil,
+        expectationAfterCompletion: (([ActionResult]) -> Void)? = nil,
         sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
         try await withMainSerialExecutor {
-            var tasks: [Task<T, Error>] = []
+            var tasks: [Task<ActionResult, Error>] = []
             for advancingProcess in processes {
                 let task = Task { try await advancingProcess.process() }
                 tasks.append(task)
@@ -376,7 +369,7 @@ extension AsyncSpy {
                 break
             }
 
-            var result: [T] = []
+            var result: [ActionResult] = []
             for task in tasks {
                 let value = try await task.value
                 result.append(value)
@@ -403,34 +396,42 @@ extension AsyncSpy {
         completeWith: (() -> Swift.Result<Result, Error>)? = nil,
         expectationAfterCompletion: (() -> Void)? = nil,
         sourceLocation: SourceLocation = #_sourceLocation
-    ) async {
-        await withMainSerialExecutor {
-            process()
-            for _ in 0 ..< yieldCount {
-                await Task.megaYield()
-            }
-            await processAdvance?()
-            expectationBeforeCompletion?()
-            switch completeWith?() {
-            case let .success(result):
-                complete(
-                    with: result,
-                    at: index,
-                    sourceLocation: sourceLocation
-                )
+    ) async throws {
+        try await _async(
+            yieldCount: yieldCount,
+            at: index,
+            process: process,
+            processAdvance: processAdvance,
+            expectationBeforeCompletion: expectationBeforeCompletion,
+            completeWith: completeWith,
+            expectationAfterCompletion: { (_: Void) in
+                expectationAfterCompletion?()
+            },
+            sourceLocation: sourceLocation
+        )
+    }
 
-            case let .failure(error):
-                complete(
-                    with: error,
-                    at: index,
-                    sourceLocation: sourceLocation
-                )
-
-            case .none:
-                break
-            }
-
-            expectationAfterCompletion?()
-        }
+    func async(
+        yieldCount: Int = 1,
+        at index: Int = 0,
+        process: @escaping () -> Void,
+        processAdvance: (() async -> Void)? = nil,
+        expectationBeforeCompletion: (() -> Void)? = nil,
+        completeWith: (() -> Swift.Result<Void, Error>)? = nil,
+        expectationAfterCompletion: (() -> Void)? = nil,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) async throws {
+        try await _async(
+            yieldCount: yieldCount,
+            at: index,
+            process: process,
+            processAdvance: processAdvance,
+            expectationBeforeCompletion: expectationBeforeCompletion,
+            completeWith: completeWith,
+            expectationAfterCompletion: { (_: Void) in
+                expectationAfterCompletion?()
+            },
+            sourceLocation: sourceLocation
+        )
     }
 }
