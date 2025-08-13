@@ -3,7 +3,9 @@
 // Created by Daniel Moro on 2025-01-17 06:03 GMT.
 
 import ConcurrencyExtras
+#if canImport(Testing)
 import Testing
+#endif
 
 /// A class for spying on asynchronous operations in Swift.
 ///
@@ -12,6 +14,8 @@ import Testing
 /// asynchronous behavior.
 ///
 /// - Note: This class is designed to be used in a testing environment.
+/// - Note: Conditionally compatible with both Swift Testing and XCTest frameworks.
+///   Uses `SourceLocation` with Swift Testing, falls back to `StaticString file, UInt line` otherwise.
 ///
 /// # AsyncSpy Usage Guide
 ///
@@ -213,6 +217,7 @@ public final class AsyncSpy {
     /// - Parameters:
     ///   - error: The error to complete the operation with.
     ///   - index: The index of the operation to complete (default is 0).
+    #if canImport(Testing)
     public func complete(
         with error: Error,
         at index: Int = 0,
@@ -224,12 +229,27 @@ public final class AsyncSpy {
         }
         messages[index].continuation.resume(throwing: error)
     }
+    #else
+    public func complete(
+        with error: Error,
+        at index: Int = 0,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        guard messages.count > index else {
+            assertionFailure("Can't complete request never made", file: file, line: line)
+            return
+        }
+        messages[index].continuation.resume(throwing: error)
+    }
+    #endif
 
     /// Completes a pending operation with a result.
     ///
     /// - Parameters:
     ///   - result: The result to complete the operation with.
     ///   - index: The index of the operation to complete (default is 0).
+    #if canImport(Testing)
     public func complete<Result: Sendable>(
         with result: Result,
         at index: Int = 0,
@@ -241,11 +261,26 @@ public final class AsyncSpy {
         }
         messages[index].continuation.resume(returning: result)
     }
+    #else
+    public func complete<Result: Sendable>(
+        with result: Result,
+        at index: Int = 0,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        guard messages.count > index else {
+            assertionFailure("Can't complete request never made", file: file, line: line)
+            return
+        }
+        messages[index].continuation.resume(returning: result)
+    }
+    #endif
 }
 
 public
 extension AsyncSpy {
 
+    #if canImport(Testing)
     private func _async<ActionResult: Sendable, Result: Sendable>(
         yieldCount: Int = 1,
         at index: Int = 0,
@@ -286,6 +321,51 @@ extension AsyncSpy {
             expectationAfterCompletion?(value)
         }
     }
+    #else
+    private func _async<ActionResult: Sendable, Result: Sendable>(
+        yieldCount: Int = 1,
+        at index: Int = 0,
+        process: @escaping () async throws -> ActionResult,
+        processAdvance: (() async -> Void)? = nil,
+        expectationBeforeCompletion: (() -> Void)? = nil,
+        completeWith: (() -> Swift.Result<Result, Error>)? = nil,
+        expectationAfterCompletion: ((ActionResult) -> Void)? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        try await withMainSerialExecutor {
+            let task = Task { try await process() }
+            for _ in 0 ..< yieldCount {
+                await Task.yield()
+            }
+            await processAdvance?()
+            expectationBeforeCompletion?()
+            switch completeWith?() {
+            case let .success(result):
+                complete(
+                    with: result,
+                    at: index,
+                    file: file,
+                    line: line
+                )
+
+            case let .failure(error):
+                complete(
+                    with: error,
+                    at: index,
+                    file: file,
+                    line: line
+                )
+
+            case .none:
+                break
+            }
+            let value = try await task.value
+            await Task.yield()
+            expectationAfterCompletion?(value)
+        }
+    }
+    #endif
 
     /// Executes an asynchronous process with controlled timing and completion at a specific index.
     ///
@@ -353,18 +433,36 @@ extension AsyncSpy {
             expectationBeforeCompletion?()
             switch completeWith?() {
             case let .success(result):
+                #if canImport(Testing)
                 complete(
                     with: result,
                     at: index,
                     sourceLocation: sourceLocation
                 )
+                #else
+                complete(
+                    with: result,
+                    at: index,
+                    file: file,
+                    line: line
+                )
+                #endif
 
             case let .failure(error):
+                #if canImport(Testing)
                 complete(
                     with: error,
                     at: index,
                     sourceLocation: sourceLocation
                 )
+                #else
+                complete(
+                    with: error,
+                    at: index,
+                    file: file,
+                    line: line
+                )
+                #endif
 
             case .none:
                 break
@@ -436,4 +534,140 @@ extension AsyncSpy {
             sourceLocation: sourceLocation
         )
     }
+
+    // MARK: - XCTest/Fallback Overloads
+    #if !canImport(Testing)
+    
+    /// Executes an asynchronous process with controlled timing and completion at a specific index.
+    func async<ActionResult: Sendable, Result: Sendable>(
+        yieldCount: Int = 1,
+        at index: Int = 0,
+        process: @escaping () async throws -> ActionResult,
+        processAdvance: (() async -> Void)? = nil,
+        expectationBeforeCompletion: (() -> Void)? = nil,
+        completeWith: (() -> Swift.Result<Result, Error>)? = nil,
+        expectationAfterCompletion: ((ActionResult) -> Void)? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        try await _async(
+            yieldCount: yieldCount,
+            at: index,
+            process: process,
+            processAdvance: processAdvance,
+            expectationBeforeCompletion: expectationBeforeCompletion,
+            completeWith: completeWith,
+            expectationAfterCompletion: expectationAfterCompletion,
+            file: file,
+            line: line
+        )
+    }
+    
+    func async<ActionResult: Sendable, Result: Sendable>(
+        yieldCount: Int = 1,
+        at index: Int = 0,
+        processes: [AdvancingProcess<ActionResult>],
+        expectationBeforeCompletion: (() -> Void)? = nil,
+        completeWith: (() -> Swift.Result<Result, Error>)? = nil,
+        expectationAfterCompletion: (([ActionResult]) -> Void)? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        try await withMainSerialExecutor {
+            var tasks: [Task<ActionResult, Error>] = []
+            for advancingProcess in processes {
+                let task = Task { try await advancingProcess.process() }
+                tasks.append(task)
+                for _ in 0 ..< yieldCount {
+                    await Task.yield()
+                }
+                if let advance = advancingProcess.processAdvance {
+                    await advance()
+                }
+            }
+            expectationBeforeCompletion?()
+            switch completeWith?() {
+            case let .success(result):
+                complete(
+                    with: result,
+                    at: index,
+                    file: file,
+                    line: line
+                )
+
+            case let .failure(error):
+                complete(
+                    with: error,
+                    at: index,
+                    file: file,
+                    line: line
+                )
+
+            case .none:
+                break
+            }
+
+            var result: [ActionResult] = []
+            for task in tasks {
+                let value = try await task.value
+                result.append(value)
+            }
+            await Task.yield()
+            expectationAfterCompletion?(result)
+        }
+    }
+    
+    func async<Result: Sendable>(
+        yieldCount: Int = 1,
+        at index: Int = 0,
+        process: @escaping () -> Void,
+        processAdvance: (() async -> Void)? = nil,
+        expectationBeforeCompletion: (() -> Void)? = nil,
+        completeWith: (() -> Swift.Result<Result, Error>)? = nil,
+        expectationAfterCompletion: (() -> Void)? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        try await _async(
+            yieldCount: yieldCount,
+            at: index,
+            process: process,
+            processAdvance: processAdvance,
+            expectationBeforeCompletion: expectationBeforeCompletion,
+            completeWith: completeWith,
+            expectationAfterCompletion: { (_: Void) in
+                expectationAfterCompletion?()
+            },
+            file: file,
+            line: line
+        )
+    }
+    
+    func async(
+        yieldCount: Int = 1,
+        at index: Int = 0,
+        process: @escaping () -> Void,
+        processAdvance: (() async -> Void)? = nil,
+        expectationBeforeCompletion: (() -> Void)? = nil,
+        completeWith: (() -> Swift.Result<Void, Error>)? = nil,
+        expectationAfterCompletion: (() -> Void)? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        try await _async(
+            yieldCount: yieldCount,
+            at: index,
+            process: process,
+            processAdvance: processAdvance,
+            expectationBeforeCompletion: expectationBeforeCompletion,
+            completeWith: completeWith,
+            expectationAfterCompletion: { (_: Void) in
+                expectationAfterCompletion?()
+            },
+            file: file,
+            line: line
+        )
+    }
+    
+    #endif
 }
