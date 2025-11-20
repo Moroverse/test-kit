@@ -136,3 +136,6 @@ func testSequentialUUIDs() async throws {
 ## License
 
 MIT License - See [LICENSE.txt](LICENSE.txt) for details.
+
+[Documentation]: https://moroverse.github.io/test-kit
+
