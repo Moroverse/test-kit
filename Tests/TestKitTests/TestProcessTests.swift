@@ -1,9 +1,10 @@
 // TestProcessTests.swift
 // Copyright (c) 2025 Moroverse
+// Created by Daniel Moro on 2025-08-02 05:08 GMT.
 
-import Testing
 import Foundation
 import Mockable
+import Testing
 
 @Mockable
 private protocol PrivateService: Sendable {
@@ -21,7 +22,7 @@ private final class ViewModel: @unchecked Sendable {
 
     func fetchItems() async throws -> [String] {
         isLoading = true
-        await  Task.yield() // insert suspension point to give a change for observers to react on isLoading change
+        await Task.yield() // insert suspension point to give a change for observers to react on isLoading change
         defer {
             isLoading = false
         }
@@ -61,7 +62,7 @@ struct TestAsyncTests {
         )
         // Test.async returns the value from process
         #expect(isLoading, "isLoading should be true")
-        #expect(afterCalledWith == ["1","2","3"], "onAfterCompletion should be called with process value")
+        #expect(afterCalledWith == ["1", "2", "3"], "onAfterCompletion should be called with process value")
         // result will be nil since Test.async is declared as returning Void. Let's check hooks only.
     }
 
@@ -108,4 +109,3 @@ struct TestAsyncTests {
         #expect(yielded == 100, "Yield should occur before onBeforeCompletion")
     }
 }
-

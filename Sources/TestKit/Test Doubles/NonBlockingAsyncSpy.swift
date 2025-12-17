@@ -1,9 +1,6 @@
-//
-//  NonBlockingAsyncSpy.swift
-//  test-kit
-//
-//  Created by Daniel Moro on 20. 11. 2025..
-//
+// NonBlockingAsyncSpy.swift
+// Copyright (c) 2025 Moroverse
+// Created by Daniel Moro on 2025-11-20 08:00 GMT.
 
 import Foundation
 
@@ -159,7 +156,6 @@ import Foundation
 /// - ✅ **Do verify intermediate states**: That's the whole point of non-blocking testing
 ///
 public final class NonBlockingAsyncSpy {
-
     /// Represents the result state of an async operation tracked by the spy.
     ///
     /// Use this enum to verify the outcome of async operations in your tests, especially
@@ -273,7 +269,7 @@ public final class NonBlockingAsyncSpy {
     ///
     /// - Note: Returns 0 if no calls were made with the specified tag.
     public func callCount(forTag tag: String) -> Int {
-        requests.filter { $0.tag == tag }.count
+        requests.count(where: { $0.tag == tag })
     }
 
     /// Performs an async operation that returns a value, tracking the call for later completion.
@@ -549,12 +545,12 @@ public final class NonBlockingAsyncSpy {
     ///   is processed. Use `withSpy` helpers for automatic handling in most cases.
     ///
     /// - Note: For void-returning `perform` methods, pass an empty tuple: `complete(with: (), at: 0)`.
-    public func complete<Resource: Sendable>(with resource: Resource, at index: Int) {
+    func complete(with resource: some Sendable, at index: Int) async {
         requests[index].continuation.yield(resource)
         requests[index].continuation.finish()
 
         while requests[index].result == nil {
-            RunLoop.current.run(until: Date())
+            await Task.yield()
         }
     }
 
@@ -620,11 +616,11 @@ public final class NonBlockingAsyncSpy {
     ///
     /// - Note: The result state will be set to `.failure` (not `.cancelled`) even if you
     ///   pass a `CancellationError`. Use `cancelPendingRequests()` for proper cancellation.
-    public func fail(with error: Error, at index: Int) {
+    func fail(with error: Error, at index: Int) async {
         requests[index].continuation.finish(throwing: error)
 
         while requests[index].result == nil {
-            RunLoop.current.run(until: Date())
+            await Task.yield()
         }
     }
 
@@ -869,18 +865,18 @@ public final class NonBlockingAsyncSpy {
 ///
 /// - Note: This helper automatically cancels all other pending requests after completion,
 ///   ensuring clean test isolation.
-public func withSpy<R: Sendable>(
+public func withSpy(
     _ spy: NonBlockingAsyncSpy,
     at index: Int = 0,
     action: @escaping () -> Void,
     beforeCompletion: @escaping () -> Void,
-    completeWith: @escaping () -> R,
+    completeWith: @escaping () -> some Sendable,
     afterCompletion: @escaping () -> Void
 ) async throws {
     action()
     beforeCompletion()
     let resource = completeWith()
-    spy.complete(with: resource, at: index)
+    await spy.complete(with: resource, at: index)
     afterCompletion()
     try await spy.cancelPendingRequests()
 }
@@ -1000,19 +996,19 @@ public func withSpy<R: Sendable>(
 ///
 /// - Note: This helper automatically cancels all other pending requests after failure,
 ///   ensuring clean test isolation.
-public func withSpy<E: Error>(
+public func withSpy(
     _ spy: NonBlockingAsyncSpy,
     at index: Int = 0,
     action: @escaping () -> Void,
     beforeCompletion: @escaping () -> Void,
-    failWith: @escaping () -> E,
+    failWith: @escaping () -> some Error,
     atIndex: @escaping () -> Int = { 0 },
     afterCompletion: @escaping () -> Void
 ) async throws {
     action()
     beforeCompletion()
     let error = failWith()
-    spy.fail(with: error, at: index)
+    await spy.fail(with: error, at: index)
     afterCompletion()
     try await spy.cancelPendingRequests()
 }

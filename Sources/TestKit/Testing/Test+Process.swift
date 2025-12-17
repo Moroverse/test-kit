@@ -6,8 +6,7 @@ import ConcurrencyExtras
 import Foundation
 import Testing
 
-public
-extension Test {
+public extension Test {
     /// Executes an asynchronous process with optional hooks before and after completion.
     ///
     /// This function runs the provided asynchronous process, yielding control to the main serial executor

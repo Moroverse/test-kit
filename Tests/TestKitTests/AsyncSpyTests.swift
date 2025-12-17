@@ -64,7 +64,7 @@ extension AsyncSpy: ProtocolA {
     fileprivate func method2(param: Object) async throws {
         try await perform(param)
     }
-    
+
     fileprivate func method(param: String, param2: Int) async throws -> Object {
         try await perform(param, param2, tag: "method")
     }

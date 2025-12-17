@@ -5,8 +5,7 @@
 import Foundation
 import Testing
 
-public
-extension Test {
+public extension Test {
     /// Creates a JSON data representation from an array of dictionaries.
     ///
     /// - Parameter objects: An array of dictionaries to be converted to JSON data.

@@ -1,12 +1,9 @@
-//
-//  ObservationSpy.swift
-//  test-kit
-//
-//  Created by Daniel Moro on 2. 8. 2025..
-//
+// ObservationSpy.swift
+// Copyright (c) 2025 Moroverse
+// Created by Daniel Moro on 2025-08-02 05:08 GMT.
 
-import Observation
 import Foundation
+import Observation
 
 /// An actor class that observes changes emitted by an `Observations` sequence
 /// and records them for later inspection. Designed for use in testing to spy
@@ -67,10 +64,10 @@ public actor ObservationSpy<T: Sendable> {
     public init(observation: Observations<T, Never>) {
         // We need to create a task that captures the actor's isolated context
         let task = Task { [weak self] in
-            guard let self = self else { return }
+            guard let self else { return }
 
             // Now we're inside an async context that can access the actor
-            await self.startObserving(observation)
+            await startObserving(observation)
         }
 
         // Store the task reference using an isolated async context
@@ -81,7 +78,7 @@ public actor ObservationSpy<T: Sendable> {
 
     // Isolated method to store the task reference
     private func setTask(_ task: Task<Void, Never>) {
-        self.observationTask = task
+        observationTask = task
     }
 
     // Isolated method to start observing

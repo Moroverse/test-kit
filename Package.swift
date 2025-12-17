@@ -19,7 +19,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-custom-dump.git", from: "1.3.3"),
         .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.3.2"),
-        .package(url: "https://github.com/Kolos65/Mockable.git", from: "0.4.0")
+        .package(url: "https://github.com/Kolos65/Mockable.git", from: "0.5.0")
     ],
     targets: [
         .target(
