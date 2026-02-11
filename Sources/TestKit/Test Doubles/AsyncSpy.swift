@@ -284,7 +284,7 @@ public extension AsyncSpy {
             yieldCount: Int = 1,
             at index: Int = 0,
             process: @escaping () async throws -> ActionResult,
-            processAdvance: (() async -> Void)? = nil,
+            processAdvance: ((Task<ActionResult, any Error>) async -> Void)? = nil,
             expectationBeforeCompletion: (() -> Void)? = nil,
             completeWith: (() -> Swift.Result<Result, Error>)? = nil,
             expectationAfterCompletion: ((ActionResult) -> Void)? = nil,
@@ -295,7 +295,7 @@ public extension AsyncSpy {
                 for _ in 0 ..< yieldCount {
                     await Task.yield()
                 }
-                await processAdvance?()
+                await processAdvance?(task)
                 expectationBeforeCompletion?()
                 switch completeWith?() {
                 case let .success(result):
@@ -380,7 +380,7 @@ public extension AsyncSpy {
         yieldCount: Int = 1,
         at index: Int = 0,
         process: @escaping () async throws -> ActionResult,
-        processAdvance: (() async -> Void)? = nil,
+        processAdvance: ((Task<ActionResult, any Error>) async -> Void)? = nil,
         expectationBeforeCompletion: (() -> Void)? = nil,
         completeWith: (() -> Swift.Result<Result, Error>)? = nil,
         expectationAfterCompletion: ((ActionResult) -> Void)? = nil,
@@ -490,7 +490,7 @@ public extension AsyncSpy {
         yieldCount: Int = 1,
         at index: Int = 0,
         process: @escaping () -> Void,
-        processAdvance: (() async -> Void)? = nil,
+        processAdvance: ((Task<Void, any Error>) async -> Void)? = nil,
         expectationBeforeCompletion: (() -> Void)? = nil,
         completeWith: (() -> Swift.Result<Result, Error>)? = nil,
         expectationAfterCompletion: (() -> Void)? = nil,
@@ -514,7 +514,7 @@ public extension AsyncSpy {
         yieldCount: Int = 1,
         at index: Int = 0,
         process: @escaping () -> Void,
-        processAdvance: (() async -> Void)? = nil,
+        processAdvance: ((Task<Void, any Error>) async -> Void)? = nil,
         expectationBeforeCompletion: (() -> Void)? = nil,
         completeWith: (() -> Swift.Result<Void, Error>)? = nil,
         expectationAfterCompletion: (() -> Void)? = nil,
