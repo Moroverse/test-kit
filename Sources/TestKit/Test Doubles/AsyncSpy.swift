@@ -486,10 +486,10 @@ public extension AsyncSpy {
     ///   - expectationBeforeCompletion: A closure to execute before completing the operation.
     ///   - completeWith: A closure that provides the result or error to complete with.
     ///   - expectationAfterCompletion: A closure to execute after completing the operation.
-    func async<Result: Sendable>(
+    func synchronous<Result: Sendable>(
         yieldCount: Int = 1,
         at index: Int = 0,
-        synchronous: @escaping () -> Void,
+        process: @escaping () -> Void,
         processAdvance: (() async -> Void)? = nil,
         expectationBeforeCompletion: (() -> Void)? = nil,
         completeWith: (() -> Swift.Result<Result, Error>)? = nil,
@@ -499,7 +499,7 @@ public extension AsyncSpy {
         try await _async(
             yieldCount: yieldCount,
             at: index,
-            process: synchronous,
+            process: process,
             processAdvance: processAdvance,
             expectationBeforeCompletion: expectationBeforeCompletion,
             completeWith: completeWith,
@@ -510,10 +510,10 @@ public extension AsyncSpy {
         )
     }
 
-    func async(
+    func synchronous(
         yieldCount: Int = 1,
         at index: Int = 0,
-        synchronous: @escaping () -> Void,
+        process: @escaping () -> Void,
         processAdvance: (() async -> Void)? = nil,
         expectationBeforeCompletion: (() -> Void)? = nil,
         completeWith: (() -> Swift.Result<Void, Error>)? = nil,
@@ -523,7 +523,7 @@ public extension AsyncSpy {
         try await _async(
             yieldCount: yieldCount,
             at: index,
-            process: synchronous,
+            process: process,
             processAdvance: processAdvance,
             expectationBeforeCompletion: expectationBeforeCompletion,
             completeWith: completeWith,
@@ -617,7 +617,7 @@ public extension AsyncSpy {
             }
         }
 
-        func async<Result: Sendable>(
+        func synchronous<Result: Sendable>(
             yieldCount: Int = 1,
             at index: Int = 0,
             process: @escaping () -> Void,
@@ -643,10 +643,10 @@ public extension AsyncSpy {
             )
         }
 
-        func async(
+        func synchronous(
             yieldCount: Int = 1,
             at index: Int = 0,
-            synchronous: @escaping () -> Void,
+            process: @escaping () -> Void,
             processAdvance: (() async -> Void)? = nil,
             expectationBeforeCompletion: (() -> Void)? = nil,
             completeWith: (() -> Swift.Result<Void, Error>)? = nil,
@@ -657,7 +657,7 @@ public extension AsyncSpy {
             try await _async(
                 yieldCount: yieldCount,
                 at: index,
-                process: synchronous,
+                process: process,
                 processAdvance: processAdvance,
                 expectationBeforeCompletion: expectationBeforeCompletion,
                 completeWith: completeWith,
