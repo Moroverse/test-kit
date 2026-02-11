@@ -1,18 +1,18 @@
 // ExpectationTracker.swift
-// Copyright (c) 2025 Moroverse
+// Copyright (c) 2026 Moroverse
 // Created by Daniel Moro on 2025-04-05 06:52 GMT.
 
 import ConcurrencyExtras
 import Foundation
 import Testing
 
-/// A struct that facilitates tracking expectations for asynchronous operations.
-///
-/// `ExpectationTracker` provides a fluent interface for setting up expectations
-/// for asynchronous operations, including the ability to specify an event to occur
-/// before completion and the expected result.
-///
-/// - Note: This struct is designed to be used with the `expect` function.
+// A struct that facilitates tracking expectations for asynchronous operations.
+//
+// `ExpectationTracker` provides a fluent interface for setting up expectations
+// for asynchronous operations, including the ability to specify an event to occur
+// before completion and the expected result.
+//
+// - Note: This struct is designed to be used with the `expect` function.
 
 public struct ExpectationTracker<T: Equatable & Sendable, E: Error & Equatable>: @unchecked Sendable {
     private let action: @Sendable () async throws -> T

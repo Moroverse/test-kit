@@ -1,5 +1,5 @@
 // UUID+Incrementing.swift
-// Copyright (c) 2025 Moroverse
+// Copyright (c) 2026 Moroverse
 // Created by Daniel Moro on 2025-04-05 06:52 GMT.
 
 import Foundation
@@ -30,7 +30,9 @@ public struct SequentialUUIDGenerationTrait: TestTrait, SuiteTrait, TestScoping 
 }
 
 public extension Trait where Self == SequentialUUIDGenerationTrait {
-    static func sequentialUUIDGeneration() -> Self { Self() }
+    static func sequentialUUIDGeneration() -> Self {
+        Self()
+    }
 }
 
 public extension UUID {

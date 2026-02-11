@@ -1,5 +1,5 @@
 // Test+Persistance.swift
-// Copyright (c) 2025 Moroverse
+// Copyright (c) 2026 Moroverse
 // Created by Daniel Moro on 2025-05-31 08:52 GMT.
 
 @preconcurrency import CoreData

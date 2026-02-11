@@ -1,5 +1,5 @@
 // ObservationSpy.swift
-// Copyright (c) 2025 Moroverse
+// Copyright (c) 2026 Moroverse
 // Created by Daniel Moro on 2025-08-02 05:08 GMT.
 
 import Foundation
@@ -76,19 +76,19 @@ public actor ObservationSpy<T: Sendable> {
         }
     }
 
-    // Isolated method to store the task reference
+    /// Isolated method to store the task reference
     private func setTask(_ task: Task<Void, Never>) {
         observationTask = task
     }
 
-    // Isolated method to start observing
+    /// Isolated method to start observing
     private func startObserving(_ observation: Observations<T, Never>) async {
         for await value in observation {
             changes.append(value)
         }
     }
 
-    // Public method to get current changes
+    /// Public method to get current changes
     func getChanges() -> [T] {
         changes
     }

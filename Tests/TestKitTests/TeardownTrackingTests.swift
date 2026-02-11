@@ -1,5 +1,5 @@
 // TeardownTrackingTests.swift
-// Copyright (c) 2025 Moroverse
+// Copyright (c) 2026 Moroverse
 // Created by Daniel Moro on 2025-04-05 06:52 GMT.
 
 import Foundation
@@ -21,7 +21,7 @@ class ClassB {
 @Suite("TeardownTracking Tests")
 struct TeardownTrackingTests {
     @Test("Expect no leaks", .teardownTracking())
-    func noLeaks() async throws {
+    func noLeaks() async {
         let a = ClassA()
         let b = ClassB(a: a)
         await Test.trackForMemoryLeaks(a)
@@ -29,7 +29,7 @@ struct TeardownTrackingTests {
     }
 
     @Test("Expect issue")
-    func noTrackingTraitSet() async throws {
+    func noTrackingTraitSet() async {
         let a = ClassA()
         let b = ClassB(a: a)
         await Test.trackForMemoryLeaks(a, isKnowIssue: true)
@@ -37,7 +37,7 @@ struct TeardownTrackingTests {
     }
 
     @Test("Expect leaks", .teardownTracking())
-    func leaks() async throws {
+    func leaks() async {
         let a = ClassA()
         let b = ClassB(a: a)
         a.b = b

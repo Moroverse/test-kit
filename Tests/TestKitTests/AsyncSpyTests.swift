@@ -1,5 +1,5 @@
 // AsyncSpyTests.swift
-// Copyright (c) 2025 Moroverse
+// Copyright (c) 2026 Moroverse
 // Created by Daniel Moro on 2025-04-05 06:52 GMT.
 
 import Foundation
@@ -81,17 +81,18 @@ struct AsyncSpyTests {
         var calls: [String] = []
 
         try await spy.async(
-            yieldCount: 3) {
-                calls.append("Called Process")
-                processor.process()
-            } expectationBeforeCompletion: {
-                calls.append("Called On Before")
-            } completeWith: {
-                calls.append("Called Complete")
-                return .success(object)
-            } expectationAfterCompletion: {
-                calls.append("Called on After with \($0)")
-            }
+            yieldCount: 3
+        ) {
+            calls.append("Called Process")
+            processor.process()
+        } expectationBeforeCompletion: {
+            calls.append("Called On Before")
+        } completeWith: {
+            calls.append("Called Complete")
+            return .success(object)
+        } expectationAfterCompletion: {
+            calls.append("Called on After with \($0)")
+        }
         #expect(calls == ["Called Process", "Called On Before", "Called Complete", "Called on After with ()"])
         #expect(spy.callCount == 1)
         let (params, tag) = spy.params(at: 0)
@@ -115,17 +116,18 @@ struct AsyncSpyTests {
         }
 
         try await spy.async(
-            yieldCount: 3) {
-                calls.append("Called Process")
-                await processor.process()
-            } expectationBeforeCompletion: {
-                calls.append("Called On Before Expectation")
-            } completeWith: {
-                calls.append("Called Complete")
-                return .success(object)
-            } expectationAfterCompletion: {
-                calls.append("Called on After Expectation with \($0)")
-            }
+            yieldCount: 3
+        ) {
+            calls.append("Called Process")
+            await processor.process()
+        } expectationBeforeCompletion: {
+            calls.append("Called On Before Expectation")
+        } completeWith: {
+            calls.append("Called Complete")
+            return .success(object)
+        } expectationAfterCompletion: {
+            calls.append("Called on After Expectation with \($0)")
+        }
         #expect(
             calls == [
                 "Called Process",

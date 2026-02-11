@@ -1,5 +1,5 @@
 // TestProcessTests.swift
-// Copyright (c) 2025 Moroverse
+// Copyright (c) 2026 Moroverse
 // Created by Daniel Moro on 2025-08-02 05:08 GMT.
 
 import Foundation
@@ -28,8 +28,7 @@ private final class ViewModel: @unchecked Sendable {
         }
 
         let data = try await networkService.getData()
-        let items = String(data: data, encoding: .utf8)?.components(separatedBy: ",") ?? []
-        return items
+        return String(data: data, encoding: .utf8)?.components(separatedBy: ",") ?? []
     }
 }
 
@@ -44,9 +43,9 @@ struct TestAsyncTests {
 
         let viewModel = ViewModel(networkService: service)
 
-        given(service)
+        try given(service)
             .getData()
-            .willReturn("1,2,3".data(using: .utf8)!)
+            .willReturn(#require("1,2,3".data(using: .utf8)))
 
         try await Test.async(
             yieldCount: 1,

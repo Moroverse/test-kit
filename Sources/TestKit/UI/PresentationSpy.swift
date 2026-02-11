@@ -1,15 +1,15 @@
 // PresentationSpy.swift
-// Copyright (c) 2025 Moroverse
+// Copyright (c) 2026 Moroverse
 // Created by Daniel Moro on 2025-04-05 06:52 GMT.
 
 import Testing
 #if canImport(UIKit)
     import UIKit
 
-    /// A spy class to intercept and verify presentation and dismissal of view controllers.
-    ///
-    /// This class intercepts the `UIViewController.present(_:animated:completion:)` method
-    /// and tracks the presentations and dismissals of view controllers for testing purposes.
+    // A spy class to intercept and verify presentation and dismissal of view controllers.
+    //
+    // This class intercepts the `UIViewController.present(_:animated:completion:)` method
+    // and tracks the presentations and dismissals of view controllers for testing purposes.
 
     @MainActor
     public class PresentationSpy: NSObject {

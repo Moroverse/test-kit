@@ -1,5 +1,5 @@
 // Test+TrackMemoryLeaks.swift
-// Copyright (c) 2025 Moroverse
+// Copyright (c) 2026 Moroverse
 // Created by Daniel Moro on 2025-04-05 06:52 GMT.
 
 import Foundation
@@ -77,5 +77,7 @@ public extension Test {
 
 private class WeakRef<T: AnyObject>: @unchecked Sendable {
     private(set) weak var value: T?
-    init(_ value: T) { self.value = value }
+    init(_ value: T) {
+        self.value = value
+    }
 }

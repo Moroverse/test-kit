@@ -1,5 +1,5 @@
 // PersistenceTestContainerTest.swift
-// Copyright (c) 2025 Moroverse
+// Copyright (c) 2026 Moroverse
 // Created by Daniel Moro on 2025-05-31 08:52 GMT.
 
 @preconcurrency import CoreData
@@ -42,7 +42,7 @@ struct MissingPersistenceTestContainerTest {
     @Test(
         "Correct context does not exists"
     )
-    func contextDoesNotExists() async throws {
+    func contextDoesNotExists() {
         let context = NSManagedObjectContext.test
         #expect(context.parent == nil, "Context should not have parent context")
         #expect(context.concurrencyType == .mainQueueConcurrencyType, "Context should be main queue concurrency type")
@@ -52,7 +52,7 @@ struct MissingPersistenceTestContainerTest {
     @Test(
         "WithTestContext throws"
     )
-    func withTestContextThrows() async throws {
+    func withTestContextThrows() async {
         await #expect(throws: Error.self, performing: {
             try await NSManagedObjectContext.withTestContext { _ in
             }
@@ -119,7 +119,7 @@ struct PersistenceTestContainerTest {
         "Test Context exists and can create objects",
         .testContext()
     )
-    func contextExists() async throws {
+    func contextExists() {
         let context = NSManagedObjectContext.test
         #expect(context.parent != nil, "Context should have parent context")
         #expect(context.concurrencyType == .privateQueueConcurrencyType, "Context should be private queue concurrency type")
@@ -140,7 +140,7 @@ struct PersistenceTestContainerTest {
         "Changes are rolled back between tests",
         .testContext()
     )
-    func changesAreRolledBack() async throws {
+    func changesAreRolledBack() throws {
         let context = NSManagedObjectContext.test
         let uniqueID = UUID()
 

@@ -1,5 +1,5 @@
 // NonBlockingAsyncSpy.swift
-// Copyright (c) 2025 Moroverse
+// Copyright (c) 2026 Moroverse
 // Created by Daniel Moro on 2025-11-20 08:00 GMT.
 
 import Foundation
