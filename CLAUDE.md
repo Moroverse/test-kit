@@ -4,124 +4,58 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TestKit is a comprehensive Swift testing utilities library designed to simplify and enhance unit testing with Swift Testing framework. It provides utilities for memory leak detection, asynchronous testing, UI presentation verification, and testing helpers.
+TestKit is a Swift testing utilities library for the Swift Testing framework (with XCTest backward compatibility). It provides async test doubles, memory leak detection, UI presentation testing, and fluent expectation APIs.
 
-## Development Commands
+- **Swift 6.2** / SPM package
+- **Platforms**: iOS 17+, macOS 14+, macCatalyst 17+
+- **Dependencies**: swift-custom-dump, swift-concurrency-extras (production); Mockable (tests only)
 
-### Building and Testing
+## Build & Test Commands
+
 ```bash
-# Build the package
-swift build
-
-# Run tests
-swift test
-
-# Run tests for specific platform
-swift test --destination "generic/platform=iOS"
-swift test --destination "generic/platform=macOS"
+swift build -v          # Build the package
+swift test -v           # Run all tests
+swift test --filter TestKitTests.SomeTestSuite  # Run a specific test suite
 ```
 
-### Documentation Generation
-```bash
-# Generate documentation for iOS (default)
-bash scripts/package_docc.sh
-
-# Generate documentation for multiple platforms
-bash scripts/package_docc.sh iOS macOS
-
-# Build documentation directly with target name
-bash scripts/docc.sh TestKit iOS macOS
-```
+CI runs on macOS 15 with latest stable Xcode via GitHub Actions (`swift.yml`).
 
 ## Architecture
 
-### Core Components
+### Source Layout (`Sources/TestKit/`)
 
-**Test Doubles (`Sources/TestKit/Test Doubles/`)**
-- `AsyncSpy`: Advanced spy for asynchronous operations with controlled timing and completion. Supports parameter tracking, multiple completions, and fluent testing API. **Now conditionally compatible with both Swift Testing and XCTest frameworks.**
+**Test Doubles** — Core async spying infrastructure:
+- `AsyncSpy` — Controls blocking async operations using `CheckedContinuation`. Call `async {}` or `synchronous {}` to wrap the operation, then `complete(with:)` to resolve it. Supports tagged calls for multiple concurrent operations.
+- `NonBlockingAsyncSpy` — For fire-and-forget async operations using `AsyncThrowingStream`. Results are polled via `result(at:timeout:)`.
+- `CascadePolicy` — Configures cascading completion of sequential async calls (`asyncWithCascade`, `synchronousWithCascade`).
 
-**Testing Utilities (`Sources/TestKit/Testing/`)**
-- `Test+Expect.swift`: Expectation tracking for async operations with fluent interface
-- `Test+TrackMemoryLeaks.swift`: Memory leak detection using weak references and teardown tracking
-- `Test+Process.swift`: Process execution utilities
-- `Test+JSON.swift`: JSON creation and comparison utilities
-- `Test+Persistance.swift`: Persistence testing helpers
-- `Test+TrackChange.swift`: State change tracking utilities
+**Testing** (`Testing/`) — Extensions on `Test` for fluent test APIs:
+- `Test.expect {}` — Fluent expectation tracker: `.toCompleteWith {}`, `.when {}`, `.execute()`
+- `Test.trackForMemoryLeaks()` — Weak-reference based leak detection via `TeardownTrackingTrait`
+- `Test.async()` — Low-level async control with `withMainSerialExecutor`
+- `Test+TrackChange` — Property mutation tracking with `ChangeTracker`
+- `Test+Persistance` — CoreData in-memory test container management via traits
+- `ObservationSpy` — Actor for spying on Observation framework changes
 
-**UI Testing (`Sources/TestKit/UI/`)**
-- `PresentationSpy`: Method swizzling-based spy for UIViewController presentation/dismissal tracking
-- `InstantAnimationStub`: Animation control for deterministic UI testing
-- `ModelPresentation`: UI presentation state management
+**Common** — Shared building blocks:
+- `ExpectationTracker` — Fluent builder for async result assertions
+- `ChangeTracker` — Fluent builder for property change assertions
 
-**Common Utilities (`Sources/TestKit/Common/`)**
-- `ChangeTracker`: Generic change tracking implementation
-- `ExpectationTracker`: Async expectation management
+**UI** (UIKit, conditional compilation):
+- `PresentationSpy` — Method swizzling on `UIViewController` to intercept present/dismiss
+- `InstantAnimationStub` — Disables animations for deterministic tests
 
-**Helpers (`Sources/TestKit/Helpers/`)**
-- `UUID+Incrementing.swift`: Sequential UUID generation for deterministic tests
-- `LocalizationHelpers.swift`: Localization validation utilities
+**Helpers**:
+- `UUID.incrementing()` — Actor-based sequential UUID generator for deterministic tests
+- Localization validation helpers
 
-### Key Dependencies
-- `swift-custom-dump`: For enhanced debugging output
-- `swift-concurrency-extras`: For advanced concurrency utilities
-- `Mockable` (test target only): For mock generation
+### Key Patterns
 
-### Testing Patterns
+- **Dual framework support**: Methods have overloads for both Swift Testing (`SourceLocation`) and XCTest (`StaticString file, UInt line`) via `#if canImport(Testing)`.
+- **Test traits**: Custom `TestTrait`/`SuiteTrait` implementations (e.g., `.teardownTracking()`, `.persistenceTestContainer()`, `.sequentialUUIDGeneration()`) handle setup/teardown via `TestScoping`.
+- **`@MainActor` pervasive**: Test doubles and test suites use `@MainActor` for thread safety.
+- **Fluent builder pattern**: `ExpectationTracker` and `ChangeTracker` use method chaining ending with `.execute()`.
 
-**AsyncSpy Framework Compatibility:**
-```swift
-// Works automatically with both Swift Testing and XCTest
-let spy = AsyncSpy<User>()
-
-// Swift Testing - uses sourceLocation parameter
-try await spy.async {
-    await sut.load()
-} completeWith: {
-    .success(user)
-}
-
-// XCTest - uses file/line parameters automatically  
-// (same API, different internal implementation)
-```
-
-**Memory Leak Testing:**
-```swift
-@Test("No memory leaks", .teardownTracking())
-func testNoLeaks() async throws {
-    let sut = MyViewModel()
-    await Test.trackForMemoryLeaks(sut)
-}
-```
-
-**AsyncSpy Usage:**
-```swift
-extension AsyncSpy: MyProtocol where Result == MyType {
-    func myMethod(_ param: String) async throws -> MyType {
-        try await perform(param)
-    }
-}
-```
-
-**Expectation Testing:**
-```swift
-await Test.expect { try await viewModel.fetchItems() }
-    .toCompleteWith { .success(["item1", "item2"]) }
-    .when { await spy.completeWith(.success(data)) }
-    .execute()
-```
-
-### Framework Compatibility
-- **Swift Testing**: Full support with `SourceLocation` and `Issue.record()` 
-- **XCTest/Fallback**: Automatic fallback using `StaticString file, UInt line` parameters and `assertionFailure()`
-- Conditional compilation ensures seamless operation in both environments
-
-### Platform Support
-- iOS 17.0+
-- macOS 14.0+
-- macCatalyst 17.0+
-- Swift 6.2+
-
-### Test Organization
-- Tests are located in `Tests/TestKitTests/`
-- Each major component has corresponding test files
-- Uses Swift Testing framework with traits for specialized testing scenarios (`.teardownTracking()`, `.sequentialUUIDGeneration()`)
+## Code Style
+- **File headers**: Auto-generated by SwiftFormat — `{file} / Copyright (c) {year} Moroverse / Created by {author} on {date}.`
+- Test suites use `@Suite("Description")` with `@MainActor` and `@Test("description")` function annotations
