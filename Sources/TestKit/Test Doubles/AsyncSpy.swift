@@ -489,7 +489,7 @@ public extension AsyncSpy {
     func async<Result: Sendable>(
         yieldCount: Int = 1,
         at index: Int = 0,
-        process: @escaping () -> Void,
+        synchronous: @escaping () -> Void,
         processAdvance: (() async -> Void)? = nil,
         expectationBeforeCompletion: (() -> Void)? = nil,
         completeWith: (() -> Swift.Result<Result, Error>)? = nil,
@@ -499,7 +499,7 @@ public extension AsyncSpy {
         try await _async(
             yieldCount: yieldCount,
             at: index,
-            process: process,
+            process: synchronous,
             processAdvance: processAdvance,
             expectationBeforeCompletion: expectationBeforeCompletion,
             completeWith: completeWith,
@@ -513,7 +513,7 @@ public extension AsyncSpy {
     func async(
         yieldCount: Int = 1,
         at index: Int = 0,
-        process: @escaping () -> Void,
+        synchronous: @escaping () -> Void,
         processAdvance: (() async -> Void)? = nil,
         expectationBeforeCompletion: (() -> Void)? = nil,
         completeWith: (() -> Swift.Result<Void, Error>)? = nil,
@@ -523,7 +523,7 @@ public extension AsyncSpy {
         try await _async(
             yieldCount: yieldCount,
             at: index,
-            process: process,
+            process: synchronous,
             processAdvance: processAdvance,
             expectationBeforeCompletion: expectationBeforeCompletion,
             completeWith: completeWith,
@@ -646,7 +646,7 @@ public extension AsyncSpy {
         func async(
             yieldCount: Int = 1,
             at index: Int = 0,
-            process: @escaping () -> Void,
+            synchronous: @escaping () -> Void,
             processAdvance: (() async -> Void)? = nil,
             expectationBeforeCompletion: (() -> Void)? = nil,
             completeWith: (() -> Swift.Result<Void, Error>)? = nil,
@@ -657,7 +657,7 @@ public extension AsyncSpy {
             try await _async(
                 yieldCount: yieldCount,
                 at: index,
-                process: process,
+                process: synchronous,
                 processAdvance: processAdvance,
                 expectationBeforeCompletion: expectationBeforeCompletion,
                 completeWith: completeWith,
