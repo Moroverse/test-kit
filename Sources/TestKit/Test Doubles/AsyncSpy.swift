@@ -278,6 +278,294 @@ public final class AsyncSpy {
     #endif
 }
 
+// MARK: - Scenario API
+
+@MainActor
+public extension AsyncSpy {
+    /// A step-by-step orchestrator for structured async test scenarios.
+    ///
+    /// `ScenarioStep` replaces the multi-closure APIs (`async {}`, `synchronous {}`, `asyncWithCascade {}`)
+    /// with an imperative, sequential interface. Instead of passing closures for each phase, you write
+    /// steps in natural order with inline assertions between them.
+    ///
+    /// ## Basic Usage
+    ///
+    /// ```swift
+    /// try await spy.scenario { step in
+    ///     step.trigger { await sut.load() }
+    ///     #expect(sut.isLoading)
+    ///     await step.complete(with: data)
+    ///     #expect(sut.items == expected)
+    /// }
+    /// ```
+    ///
+    /// ## Phases
+    ///
+    /// A scenario typically flows through these phases:
+    /// 1. **Trigger** — Launch the SUT's async (or sync) operation
+    /// 2. **Assert pre-completion state** — Verify loading indicators, intermediate state
+    /// 3. **Complete** — Resume the spy's continuation with a success or failure
+    /// 4. **Assert post-completion state** — Verify final state, call counts, parameters
+    /// 5. *(Optional)* **Cascade** — Complete subsequent operations triggered by the first
+    @MainActor final class ScenarioStep {
+        private let spy: AsyncSpy
+        private let yieldCount: Int
+        private(set) var tasks: [Task<Void, any Error>] = []
+        private var nextCascadeIndex: Int = 0
+
+        #if canImport(Testing)
+            private let sourceLocation: SourceLocation
+
+            init(spy: AsyncSpy, yieldCount: Int, sourceLocation: SourceLocation) {
+                self.spy = spy
+                self.yieldCount = yieldCount
+                self.sourceLocation = sourceLocation
+            }
+        #else
+            private let file: StaticString
+            private let line: UInt
+
+            init(spy: AsyncSpy, yieldCount: Int, file: StaticString, line: UInt) {
+                self.spy = spy
+                self.yieldCount = yieldCount
+                self.file = file
+                self.line = line
+            }
+        #endif
+
+        /// Launches an async process as a tracked `Task` and yields to let it execute.
+        ///
+        /// Use this when the SUT method you're testing is `async`. The process is wrapped in a `Task`,
+        /// appended to the step's task list, and then the step yields `yieldCount` times to allow
+        /// the process to reach the spy's continuation point.
+        ///
+        /// The returned task can be captured for cancellation or other control:
+        /// ```swift
+        /// try await spy.scenario { step in
+        ///     let task = await step.trigger { await sut.load() }
+        ///     task.cancel()
+        ///     await step.complete(with: data)
+        /// }
+        /// ```
+        ///
+        /// - Parameter process: The async operation to execute (typically calls the SUT).
+        /// - Returns: The `Task` wrapping the process, for optional cancellation or inspection.
+        @discardableResult
+        public func trigger(_ process: @escaping () async throws -> Void) async -> Task<Void, any Error> {
+            let task = Task { try await process() }
+            tasks.append(task)
+            for _ in 0 ..< yieldCount {
+                await Task.yield()
+            }
+            return task
+        }
+
+        /// Calls a synchronous process directly and yields to let internally-spawned tasks execute.
+        ///
+        /// Use this when the SUT method is synchronous but internally spawns a `Task` that calls
+        /// the spy. The process is called directly (not wrapped in a Task), then the step yields
+        /// `yieldCount` times to allow the internal Task to reach the spy's continuation point.
+        ///
+        /// ```swift
+        /// try await spy.scenario(yieldCount: 3) { step in
+        ///     await step.trigger(sync: { sut.process() })
+        ///     await step.complete(with: result)
+        /// }
+        /// ```
+        ///
+        /// - Parameter process: The synchronous operation to execute.
+        public func trigger(sync process: @MainActor () -> Void) async {
+            process()
+            for _ in 0 ..< yieldCount {
+                await Task.yield()
+            }
+        }
+
+        /// Resumes the spy's continuation at the given index with a success value.
+        ///
+        /// After completing, yields once to let the resumed task propagate its result,
+        /// and updates `nextCascadeIndex` to `index + 1` for subsequent cascade completions.
+        ///
+        /// ```swift
+        /// try await spy.scenario { step in
+        ///     step.trigger { await sut.load() }
+        ///     await step.complete(with: expectedData)
+        ///     #expect(sut.data == expectedData)
+        /// }
+        /// ```
+        ///
+        /// For multiple pending calls, specify the index explicitly:
+        /// ```swift
+        /// await step.complete(with: firstResult, at: 0)
+        /// await step.complete(with: secondResult, at: 1)
+        /// ```
+        ///
+        /// - Parameters:
+        ///   - result: The value to resume the continuation with.
+        ///   - index: The index of the pending operation to complete (default is 0).
+        public func complete(with result: some Sendable, at index: Int = 0) async {
+            #if canImport(Testing)
+                spy.complete(with: result, at: index, sourceLocation: sourceLocation)
+            #else
+                spy.complete(with: result, at: index, file: file, line: line)
+            #endif
+            nextCascadeIndex = index + 1
+            await Task.yield()
+        }
+
+        /// Resumes the spy's continuation at the given index with an error.
+        ///
+        /// Use this to test error-handling paths. After failing, yields once and updates
+        /// `nextCascadeIndex` to `index + 1`.
+        ///
+        /// ```swift
+        /// try await spy.scenario { step in
+        ///     step.trigger { await sut.load() }
+        ///     await step.fail(with: NetworkError.timeout)
+        ///     #expect(sut.error is NetworkError)
+        /// }
+        /// ```
+        ///
+        /// - Parameters:
+        ///   - error: The error to resume the continuation with.
+        ///   - index: The index of the pending operation to complete (default is 0).
+        public func fail(with error: Error, at index: Int = 0) async {
+            #if canImport(Testing)
+                spy.complete(with: error, at: index, sourceLocation: sourceLocation)
+            #else
+                spy.complete(with: error, at: index, file: file, line: line)
+            #endif
+            nextCascadeIndex = index + 1
+            await Task.yield()
+        }
+
+        /// Completes cascading operations that were triggered by the primary completion.
+        ///
+        /// When completing the primary operation causes the SUT to make additional async calls
+        /// (e.g., delete → reload), use `cascade` to complete those subsequent operations.
+        /// Each completion is applied at `nextCascadeIndex` (auto-incremented), with a yield
+        /// between each to allow the task to progress.
+        ///
+        /// ```swift
+        /// try await spy.scenario { step in
+        ///     step.trigger { await sut.deleteAndReload(item) }
+        ///     await step.complete(with: ())         // completes delete at index 0
+        ///     await step.cascade(.success(newList))  // completes reload at index 1
+        ///     #expect(sut.items == newList)
+        /// }
+        /// ```
+        ///
+        /// Use `.skip` for error paths where the cascading call doesn't fire:
+        /// ```swift
+        /// try await spy.scenario { step in
+        ///     step.trigger { await sut.deleteAndReload(item) }
+        ///     await step.fail(with: DeleteError.denied)
+        ///     await step.cascade(.skip)  // reload never happens
+        ///     #expect(sut.error is DeleteError)
+        /// }
+        /// ```
+        ///
+        /// - Parameter completions: One or more `CascadeCompletion` values to apply in order.
+        public func cascade(_ completions: CascadeCompletion...) async {
+            for completion in completions {
+                completion.apply(to: spy, at: nextCascadeIndex)
+                nextCascadeIndex += 1
+                await Task.yield()
+            }
+        }
+    }
+
+    /// Executes a structured test scenario with step-by-step phase control.
+    ///
+    /// `scenario` wraps execution in `withMainSerialExecutor` for deterministic scheduling,
+    /// creates a `ScenarioStep` context, and auto-awaits all triggered tasks after the body completes.
+    ///
+    /// ## Overview
+    ///
+    /// The scenario API replaces the multi-closure orchestration methods (`async {}`, `synchronous {}`,
+    /// `asyncWithCascade {}`) with a single, imperative interface. Write test phases in natural order
+    /// with inline assertions between them:
+    ///
+    /// ```swift
+    /// try await spy.scenario(yieldCount: 3) { step in
+    ///     step.trigger { await sut.load() }
+    ///     #expect(sut.isLoading)
+    ///     await step.complete(with: data)
+    ///     #expect(sut.items == expected)
+    /// }
+    /// ```
+    ///
+    /// ## How `yieldCount` Affects Timing
+    ///
+    /// The `yieldCount` controls how many times `Task.yield()` is called after each trigger.
+    /// Higher values give the triggered task more opportunities to progress before your assertions
+    /// run. The default of 1 is sufficient for most cases; increase it when the SUT has multiple
+    /// suspension points before reaching the spy.
+    ///
+    /// ## Deterministic Scheduling
+    ///
+    /// The entire body runs inside `withMainSerialExecutor`, which forces all `@MainActor` tasks
+    /// to execute serially. Combined with `Task.yield()`, this gives you precise control over
+    /// execution order.
+    ///
+    /// - Parameters:
+    ///   - yieldCount: Number of times to yield after each trigger (default is 1).
+    ///   - body: A closure receiving a ``ScenarioStep`` for orchestrating the test phases.
+    ///
+    /// ## Auto-Await
+    ///
+    /// After the body completes, all tasks created via `trigger` are automatically awaited.
+    /// Errors from those tasks are intentionally swallowed (since test scenarios often
+    /// use `fail(with:)` to trigger error paths).
+    ///
+    /// - MARK: Migration Guide
+    ///
+    /// | Old Pattern | New Pattern |
+    /// |-------------|-------------|
+    /// | `spy.async { await sut.load() } completeWith: { .success(data) } expectationAfterCompletion: { ... }` | `spy.scenario { step in step.trigger { await sut.load() }; await step.complete(with: data); ... }` |
+    /// | `spy.synchronous { sut.setFilter(.active) } completeWith: { .success(data) }` | `spy.scenario { step in step.trigger(sync: { sut.setFilter(.active) }); await step.complete(with: data) }` |
+    /// | `spy.async { ... } expectationBeforeCompletion: { #expect(sut.isLoading) } completeWith: { ... }` | `spy.scenario { step in step.trigger { ... }; #expect(sut.isLoading); await step.complete(with: ...) }` |
+    /// | `spy.asyncWithCascade { ... } completeWith: { .success(()) } cascade: { .init([.success(list)]) }` | `spy.scenario { step in step.trigger { ... }; await step.complete(with: ()); await step.cascade(.success(list)) }` |
+    /// | `spy.asyncWithCascade { ... } completeWith: { .failure(err) } cascade: { .init([.skip]) }` | `spy.scenario { step in step.trigger { ... }; await step.fail(with: err); await step.cascade(.skip) }` |
+    /// | `spy.async { ... } processAdvance: { task in task.cancel() } completeWith: { ... }` | `spy.scenario { step in let task = step.trigger { ... }; task.cancel(); await step.complete(with: ...) }` |
+    /// | `spy.async(at: 1) { await sut.reload() } completeWith: { .success(data) }` | `spy.scenario { step in step.trigger { await sut.reload() }; await step.complete(with: data, at: 1) }` |
+    func scenario(
+        yieldCount: Int = 1,
+        _ body: (ScenarioStep) async throws -> Void,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) async throws {
+        try await withMainSerialExecutor {
+            let step = ScenarioStep(spy: self, yieldCount: yieldCount, sourceLocation: sourceLocation)
+            try await body(step)
+            for task in step.tasks {
+                _ = try? await task.value
+            }
+        }
+    }
+}
+
+// MARK: - XCTest/Scenario Fallback
+
+#if !canImport(Testing)
+    @MainActor
+    public extension AsyncSpy {
+        func scenario(
+            yieldCount: Int = 1,
+            _ body: (ScenarioStep) async throws -> Void,
+            file: StaticString = #filePath,
+            line: UInt = #line
+        ) async throws {
+            try await withMainSerialExecutor {
+                let step = ScenarioStep(spy: self, yieldCount: yieldCount, file: file, line: line)
+                try await body(step)
+                for task in step.tasks {
+                    _ = try? await task.value
+                }
+            }
+        }
+    }
+#endif
+
 public extension AsyncSpy {
     #if canImport(Testing)
         private func _async<ActionResult: Sendable, Result: Sendable>(
@@ -376,6 +664,7 @@ public extension AsyncSpy {
     ///   - completeWith: A closure that provides the result or error to complete with.
     ///   - expectationAfterCompletion: A closure to execute after completing the operation.
     /// - Throws: Any error that occurs during the process.
+    @available(*, deprecated, message: "Use scenario {} instead")
     func async<ActionResult: Sendable, Result: Sendable>(
         yieldCount: Int = 1,
         at index: Int = 0,
@@ -398,6 +687,7 @@ public extension AsyncSpy {
         )
     }
 
+    @available(*, deprecated, message: "Use scenario {} instead")
     struct AdvancingProcess<T: Sendable> {
         let process: () async throws -> T
         let processAdvance: (() async -> Void)?
@@ -408,6 +698,7 @@ public extension AsyncSpy {
         }
     }
 
+    @available(*, deprecated, message: "Use scenario {} instead")
     func async<ActionResult: Sendable, Result: Sendable>(
         yieldCount: Int = 1,
         at index: Int = 0,
@@ -486,6 +777,7 @@ public extension AsyncSpy {
     ///   - expectationBeforeCompletion: A closure to execute before completing the operation.
     ///   - completeWith: A closure that provides the result or error to complete with.
     ///   - expectationAfterCompletion: A closure to execute after completing the operation.
+    @available(*, deprecated, message: "Use scenario {} instead")
     func synchronous<Result: Sendable>(
         yieldCount: Int = 1,
         at index: Int = 0,
@@ -510,6 +802,7 @@ public extension AsyncSpy {
         )
     }
 
+    @available(*, deprecated, message: "Use scenario {} instead")
     func synchronous(
         yieldCount: Int = 1,
         at index: Int = 0,
@@ -539,6 +832,7 @@ public extension AsyncSpy {
     #if !canImport(Testing)
 
         /// Executes an asynchronous process with controlled timing and completion at a specific index.
+        @available(*, deprecated, message: "Use scenario {} instead")
         func async<ActionResult: Sendable, Result: Sendable>(
             yieldCount: Int = 1,
             at index: Int = 0,
@@ -563,6 +857,7 @@ public extension AsyncSpy {
             )
         }
 
+        @available(*, deprecated, message: "Use scenario {} instead")
         func async<ActionResult: Sendable, Result: Sendable>(
             yieldCount: Int = 1,
             at index: Int = 0,
@@ -617,6 +912,7 @@ public extension AsyncSpy {
             }
         }
 
+        @available(*, deprecated, message: "Use scenario {} instead")
         func synchronous<Result: Sendable>(
             yieldCount: Int = 1,
             at index: Int = 0,
@@ -643,6 +939,7 @@ public extension AsyncSpy {
             )
         }
 
+        @available(*, deprecated, message: "Use scenario {} instead")
         func synchronous(
             yieldCount: Int = 1,
             at index: Int = 0,

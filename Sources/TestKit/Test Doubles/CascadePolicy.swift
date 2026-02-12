@@ -68,6 +68,7 @@ public extension AsyncSpy {
         ///     #expect(spy.callCount(forTag: "Delete") == 1)
         /// }
         /// ```
+        @available(*, deprecated, message: "Use scenario {} instead")
         func asyncWithCascade<ActionResult: Sendable, Result: Sendable>(
             yieldCount: Int = 1,
             at index: Int = 0,
@@ -109,6 +110,7 @@ public extension AsyncSpy {
         }
 
         /// Synchronous version for operations that hide async work
+        @available(*, deprecated, message: "Use scenario {} instead")
         func synchronousWithCascade<Result: Sendable>(
             yieldCount: Int = 1,
             at index: Int = 0,
@@ -135,6 +137,7 @@ public extension AsyncSpy {
     #else
 
         /// XCTest versions
+        @available(*, deprecated, message: "Use scenario {} instead")
         func asyncWithCascade<ActionResult: Sendable, Result: Sendable>(
             yieldCount: Int = 1,
             at index: Int = 0,
@@ -165,7 +168,7 @@ public extension AsyncSpy {
 
                 // Complete cascading operations
                 await Task.yield()
-                for (offset, completion) in cascade.continuations.enumerated() {
+                for (offset, completion) in cascade().continuations.enumerated() {
                     completion.apply(to: self, at: index + offset + 1)
                     await Task.yield()
                 }
@@ -176,6 +179,7 @@ public extension AsyncSpy {
             }
         }
 
+        @available(*, deprecated, message: "Use scenario {} instead")
         func asyncWithCascade<Result: Sendable>(
             yieldCount: Int = 1,
             at index: Int = 0,
