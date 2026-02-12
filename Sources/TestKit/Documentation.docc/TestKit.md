@@ -4,18 +4,34 @@ A comprehensive testing utility package designed to simplify and enhance the pro
 
 ## Overview
 
-`TestKit` provides a set of utilities and extensions to streamline the creation and verification of unit tests. It includes functionalities for JSON data creation, memory leak tracking, asynchronous process handling, and more. This package is particularly useful for developers looking to improve the reliability and readability of their test code.
+TestKit provides utilities and extensions to streamline creation and verification of unit tests with the Swift Testing framework. It includes async test doubles, memory leak detection, fluent expectation APIs, change tracking, UI presentation testing, and more.
 
 ## Topics
 
-### JSON Utilities
+### Essentials
 
-The JSON utilities allow you to easily create JSON data from dictionaries and arrays, and to assert the equality of JSON data objects.
+- <doc:GettingStarted>
+- <doc:MigratingToScenarioAPI>
 
-- ``Testing/Test/makeJSON(withObjects:)``
-- ``Testing/Test/makeJSON(withObject:)``
-- ``Testing/Test/makeJSON(withArray:)``
-- ``Testing/Test/assertEqual(_:_:sourceLocation:)``
+### Async Test Doubles
+
+Control and verify asynchronous operations with test spies.
+
+- ``AsyncSpy``
+- ``AsyncSpy/ScenarioStep``
+- ``AsyncSpy/CascadeCompletion``
+- ``AsyncSpy/CascadePolicy``
+- ``NonBlockingAsyncSpy``
+
+### Fluent Expectations
+
+Verify async operation results and property changes with chainable APIs.
+
+- ``ExpectationTracker``
+- ``ChangeTracker``
+- ``Testing/Test/expect(_:sourceLocation:)->ExpectationTracker<T,E>``
+- ``Testing/Test/expect(_:sourceLocation:)->ExpectationTracker<T,Never>``
+- ``Testing/Test/trackChange(of:in:sourceLocation:)``
 
 ### Memory Leak Tracking
 
@@ -23,17 +39,24 @@ Ensure instances are properly deallocated to prevent potential memory leaks.
 
 - ``TeardownTrackingTrait``
 
-### Asynchronous Process Handling
+### Async Process Control
 
-Manage and test asynchronous code more effectively with utilities for performing asynchronous processes, setting expectations, tracking changes, and general-purpose spying.
-
-- ``AsyncSpy``
 - ``Testing/Test/async(yieldCount:process:onBeforeCompletion:onAfterCompletion:)``
-- ``Testing/Test/expect(_:sourceLocation:)->ExpectationTracker<T,E>``
-- ``Testing/Test/expect(_:sourceLocation:)->ExpectationTracker<T,Never>``
-- ``Testing/Test/trackChange(of:in:sourceLocation:)``
 
-### Localized keys and values exist.
+### Observation Testing
+
+- ``ObservationSpy``
+
+### JSON Utilities
+
+Create and compare JSON data for testing.
+
+- ``Testing/Test/makeJSON(withObjects:)``
+- ``Testing/Test/makeJSON(withObject:)``
+- ``Testing/Test/makeJSON(withArray:)``
+- ``Testing/Test/assertEqual(_:_:sourceLocation:)``
+
+### Localization Testing
 
 - ``localized(_:in:sourceLocation:)``
 - ``localized(_:in:table:sourceLocation:)``
@@ -41,15 +64,11 @@ Manage and test asynchronous code more effectively with utilities for performing
 
 ### UI Testing Utilities
 
-Utilities to assist with UI testing.
-
 - ``InstantAnimationStub``
 - ``PresentationSpy``
 
 ### Additional Utilities
 
-Other helpful utilities for testing.
-
 - ``Foundation/UUID/incrementing()``
 - ``ModelPresentation``
-
+- ``SequentialUUIDGenerationTrait``
