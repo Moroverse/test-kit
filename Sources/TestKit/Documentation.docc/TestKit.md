@@ -43,10 +43,6 @@ Ensure instances are properly deallocated to prevent potential memory leaks.
 
 - ``Testing/Test/async(yieldCount:process:onBeforeCompletion:onAfterCompletion:)``
 
-### Observation Testing
-
-- ``ObservationSpy``
-
 ### JSON Utilities
 
 Create and compare JSON data for testing.

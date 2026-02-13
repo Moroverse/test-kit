@@ -34,7 +34,6 @@ CI runs on macOS 15 with latest stable Xcode via GitHub Actions (`swift.yml`).
 - `Test.trackForMemoryLeaks()` — Weak-reference based leak detection via `TeardownTrackingTrait`
 - `Test+TrackChange` — Property mutation tracking with `ChangeTracker`
 - `Test+Persistance` — CoreData in-memory test container management via traits
-- `ObservationSpy` — Actor for spying on Observation framework changes
 
 **Common** — Shared building blocks:
 - `ChangeTracker` — Fluent builder for property change assertions
