@@ -88,7 +88,7 @@ public struct ChangeTracker<SUT, T: Equatable> {
     /// This method performs the setup, checks the initial value,
     /// executes the change action, and checks the final value.
     ///
-    public func execute() async {
+    public func verify() async {
         if let initialSetup {
             initialSetup()
             await Task.yield()

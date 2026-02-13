@@ -25,10 +25,10 @@ public extension Test {
     ///       .expectInitialValue { .loading }
     ///       .whenChanging { await viewModel.performSearch() }
     ///       .expectFinalValue { .success(results) }
-    ///       .execute()
+    ///       .verify()
     ///   ```
     ///
-    /// - Note: The `execute()` method must be called at the end of the chain to perform the tracking.
+    /// - Note: The `verify()` method must be called at the end of the chain to perform the tracking.
     static func trackChange<SUT, T: Equatable>(
         of property: KeyPath<SUT, T>,
         in sut: SUT,
