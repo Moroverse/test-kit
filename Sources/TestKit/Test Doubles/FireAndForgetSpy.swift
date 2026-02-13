@@ -3,6 +3,9 @@
 // Created by Daniel Moro on 2025-11-20 08:00 GMT.
 
 import Foundation
+#if canImport(Testing)
+    import Testing
+#endif
 
 /// A test spy for verifying fire-and-forget asynchronous operations where the system under test
 /// calls a method **synchronously** (without `await`) that triggers async work internally.
@@ -75,24 +78,18 @@ import Foundation
 ///     }
 /// }
 ///
-/// // 4. Test using withSpy helper (recommended approach)
+/// // 4. Test using scenario API (recommended approach)
 /// @Test func testLoadUserSuccess() async throws {
 ///     let spy = FireAndForgetSpy()
 ///     let sut = UserViewModel(service: spy)
 ///     let expectedUser = User(id: 1, name: "Alice")
 ///
-///     try await withSpy(spy) {
-///         sut.loadUser(id: 1)  // ← No await! Fire-and-forget call
-///     } beforeCompletion: {
-///         #expect(sut.isLoading == true)   // Verify loading state
-///         #expect(sut.user == nil)
-///         #expect(sut.error == nil)
-///     } completeWith: {
-///         expectedUser  // Control when/what the async operation returns
-///     } afterCompletion: {
-///         #expect(sut.isLoading == false)  // Verify final state
+///     try await spy.scenario { step in
+///         await step.trigger { sut.loadUser(id: 1) }
+///         #expect(sut.isLoading == true)
+///         await step.complete(with: expectedUser)
+///         #expect(sut.isLoading == false)
 ///         #expect(sut.user?.id == 1)
-///         #expect(sut.error == nil)
 ///     }
 /// }
 ///
@@ -102,38 +99,26 @@ import Foundation
 ///     let sut = UserViewModel(service: spy)
 ///     struct TestError: Error {}
 ///
-///     try await withSpy(spy) {
-///         sut.loadUser(id: 999)
-///     } beforeCompletion: {
+///     try await spy.scenario { step in
+///         await step.trigger { sut.loadUser(id: 999) }
 ///         #expect(sut.isLoading == true)
-///         #expect(sut.error == nil)
-///     } failWith: {
-///         TestError()  // Simulate failure
-///     } afterCompletion: {
+///         await step.fail(with: TestError())
 ///         #expect(sut.isLoading == false)
-///         #expect(sut.user == nil)
 ///         #expect(sut.error != nil)
 ///     }
 /// }
 ///
-/// // 6. Advanced: Direct usage without withSpy helper
+/// // 6. Test cancellation
 /// @Test func testLoadUserCancellation() async throws {
 ///     let spy = FireAndForgetSpy()
 ///     let sut = UserViewModel(service: spy)
 ///
-///     // Trigger the operation
-///     sut.loadUser(id: 1)
-///
-///     // Verify loading state
-///     #expect(sut.isLoading == true)
-///
-///     // Cancel all pending requests
-///     try await spy.cancelPendingRequests()
-///
-///     // Wait for result and verify cancellation
-///     let result = try await spy.result(at: 0)
-///     #expect(result == .cancelled)
-///     #expect(sut.isLoading == false)
+///     try await spy.scenario { step in
+///         await step.trigger { sut.loadUser(id: 1) }
+///         try await step.cancel()
+///         let result = try await spy.result(at: 0)
+///         #expect(result == .cancelled)
+///     }
 /// }
 /// ```
 ///
@@ -148,13 +133,14 @@ import Foundation
 ///
 /// ## Common Pitfalls
 ///
-/// - ❌ **Don't await the SUT action**: `await sut.loadUser()` defeats the purpose
-/// - ✅ **Do call synchronously**: `sut.loadUser()` and control completion separately
-/// - ❌ **Don't forget to complete/fail**: Pending requests will timeout
-/// - ✅ **Do use `withSpy` helpers**: They handle completion and cleanup automatically
-/// - ❌ **Don't use for methods you await**: Use `AsyncSpy` instead
-/// - ✅ **Do verify intermediate states**: That's the whole point of fire-and-forget testing
+/// - Don't await the SUT action: `await sut.loadUser()` defeats the purpose
+/// - Do call synchronously: `sut.loadUser()` and control completion separately
+/// - Don't forget to complete/fail: Pending requests will timeout
+/// - Do use `scenario {}`: It handles cleanup automatically
+/// - Don't use for methods you await: Use `AsyncSpy` instead
+/// - Do verify intermediate states: That's the whole point of fire-and-forget testing
 ///
+@MainActor
 public final class FireAndForgetSpy {
     /// Represents the result state of an async operation tracked by the spy.
     ///
@@ -200,6 +186,8 @@ public final class FireAndForgetSpy {
         tag: String?,
         result: Result?
     )]()
+
+    public init() {}
 
     private struct NoResponse: Error {}
     private struct Timeout: Error {}
@@ -293,33 +281,6 @@ public final class FireAndForgetSpy {
     /// }
     /// ```
     ///
-    /// ## Testing with Direct Usage
-    ///
-    /// ```swift
-    /// @Test func testLoadUserDirect() async throws {
-    ///     let spy = FireAndForgetSpy()
-    ///     let sut = UserViewModel(service: spy)
-    ///     let expectedUser = User(id: 1, name: "Alice")
-    ///
-    ///     // Trigger non-blocking call
-    ///     sut.loadUser(id: 1)
-    ///
-    ///     // Verify intermediate state
-    ///     #expect(sut.isLoading == true)
-    ///
-    ///     // Complete the operation
-    ///     spy.complete(with: expectedUser, at: 0)
-    ///
-    ///     // Wait for result
-    ///     let result = try await spy.result(at: 0)
-    ///     #expect(result == .success)
-    ///
-    ///     // Verify final state
-    ///     #expect(sut.user?.id == 1)
-    ///     #expect(sut.isLoading == false)
-    /// }
-    /// ```
-    ///
     /// - Parameters:
     ///   - parameters: Zero or more parameters of any `Sendable` type. These are stored
     ///     for inspection via the `requests` property.
@@ -336,7 +297,7 @@ public final class FireAndForgetSpy {
     ///
     /// - Note: This method suspends until `complete(with:at:)`, `fail(with:at:)`, or
     ///   `cancelPendingRequests()` is called. It **must** be completed eventually or the
-    ///   test will hang (or timeout with `withSpy` helpers).
+    ///   test will hang.
     public func perform<each Parameter, Resource: Sendable>(_ parameters: repeat each Parameter, tag: String? = nil) async throws -> Resource {
         let (stream, continuation) = AsyncThrowingStream<any Sendable, Error>.makeStream()
         let index = requests.count
@@ -408,26 +369,6 @@ public final class FireAndForgetSpy {
     /// }
     /// ```
     ///
-    /// ## Testing Example
-    ///
-    /// ```swift
-    /// @Test func testDeleteUser() async throws {
-    ///     let spy = FireAndForgetSpy()
-    ///     let sut = UserViewModel(service: spy)
-    ///
-    ///     try await withSpy(spy) {
-    ///         sut.deleteUser(id: 42)  // No await - fire-and-forget
-    ///     } beforeCompletion: {
-    ///         #expect(sut.isDeleting == true)
-    ///     } completeWith: {
-    ///         () // Complete successfully with no value
-    ///     } afterCompletion: {
-    ///         #expect(sut.isDeleting == false)
-    ///         #expect(sut.userWasDeleted == true)
-    ///     }
-    /// }
-    /// ```
-    ///
     /// - Parameters:
     ///   - parameters: Zero or more parameters of any `Sendable` type. These are stored
     ///     for inspection via the `requests` property.
@@ -440,8 +381,7 @@ public final class FireAndForgetSpy {
     ///   - `NoResponse` if the stream finishes without yielding a value
     ///
     /// - Note: Complete this operation by calling `complete(with: (), at: index)` where
-    ///   you pass an empty tuple `()` as the resource, or use the `withSpy` helpers which
-    ///   handle this automatically.
+    ///   you pass an empty tuple `()` as the resource.
     public func perform<each Parameter>(_ parameters: repeat each Parameter, tag: String? = nil) async throws {
         let (stream, continuation) = AsyncThrowingStream<any Sendable, Error>.makeStream()
         let index = requests.count
@@ -487,62 +427,13 @@ public final class FireAndForgetSpy {
     /// Completes a pending async operation with a successful result.
     ///
     /// This method causes the corresponding `perform` call to return the provided resource.
-    /// It blocks synchronously (using RunLoop polling) until the result state is updated,
+    /// It polls asynchronously (using `Task.yield()`) until the result state is updated,
     /// ensuring the async operation has fully processed the completion before continuing.
-    ///
-    /// ## Direct Usage Example
-    ///
-    /// ```swift
-    /// @Test func testManualCompletion() async throws {
-    ///     let spy = FireAndForgetSpy()
-    ///     let sut = UserViewModel(service: spy)
-    ///     let expectedUser = User(id: 1, name: "Alice")
-    ///
-    ///     // Trigger the operation
-    ///     sut.loadUser(id: 1)
-    ///
-    ///     // Verify loading state
-    ///     #expect(sut.isLoading == true)
-    ///
-    ///     // Complete the first request (index 0)
-    ///     spy.complete(with: expectedUser, at: 0)
-    ///
-    ///     // Wait for result propagation
-    ///     let result = try await spy.result(at: 0)
-    ///     #expect(result == .success)
-    ///
-    ///     // Verify final state
-    ///     #expect(sut.user?.id == 1)
-    ///     #expect(sut.isLoading == false)
-    /// }
-    /// ```
-    ///
-    /// ## Multiple Operations Example
-    ///
-    /// ```swift
-    /// @Test func testMultipleOperations() async throws {
-    ///     let spy = FireAndForgetSpy()
-    ///     let sut = UserViewModel(service: spy)
-    ///
-    ///     // Trigger two operations
-    ///     sut.loadUser(id: 1)  // Will be at index 0
-    ///     sut.loadUser(id: 2)  // Will be at index 1
-    ///
-    ///     // Complete them in any order
-    ///     spy.complete(with: User(id: 2, name: "Bob"), at: 1)
-    ///     spy.complete(with: User(id: 1, name: "Alice"), at: 0)
-    ///
-    ///     #expect(spy.callCount == 2)
-    /// }
-    /// ```
     ///
     /// - Parameters:
     ///   - resource: The value to return from the `perform` call. Must match the `Resource`
     ///     type expected by the `perform` method.
     ///   - index: The zero-based index of the request to complete. First call is 0, second is 1, etc.
-    ///
-    /// - Important: This method blocks the current thread using RunLoop until the result
-    ///   is processed. Use `withSpy` helpers for automatic handling in most cases.
     ///
     /// - Note: For void-returning `perform` methods, pass an empty tuple: `complete(with: (), at: 0)`.
     func complete(with resource: some Sendable, at index: Int) async {
@@ -557,62 +448,12 @@ public final class FireAndForgetSpy {
     /// Completes a pending async operation with a failure.
     ///
     /// This method causes the corresponding `perform` call to throw the provided error.
-    /// It blocks synchronously (using RunLoop polling) until the result state is updated,
+    /// It polls asynchronously (using `Task.yield()`) until the result state is updated,
     /// ensuring the async operation has fully processed the failure before continuing.
-    ///
-    /// ## Direct Usage Example
-    ///
-    /// ```swift
-    /// @Test func testManualFailure() async throws {
-    ///     let spy = FireAndForgetSpy()
-    ///     let sut = UserViewModel(service: spy)
-    ///     struct NetworkError: Error {}
-    ///
-    ///     // Trigger the operation
-    ///     sut.loadUser(id: 999)
-    ///
-    ///     // Verify loading state
-    ///     #expect(sut.isLoading == true)
-    ///     #expect(sut.error == nil)
-    ///
-    ///     // Fail the request
-    ///     spy.fail(with: NetworkError(), at: 0)
-    ///
-    ///     // Wait for result propagation
-    ///     let result = try await spy.result(at: 0)
-    ///     #expect(result == .failure)
-    ///
-    ///     // Verify error state
-    ///     #expect(sut.isLoading == false)
-    ///     #expect(sut.error != nil)
-    /// }
-    /// ```
-    ///
-    /// ## Testing Different Error Types
-    ///
-    /// ```swift
-    /// @Test func testDifferentErrors() async throws {
-    ///     let spy = FireAndForgetSpy()
-    ///     let sut = UserViewModel(service: spy)
-    ///
-    ///     // Test network error
-    ///     sut.loadUser(id: 1)
-    ///     spy.fail(with: URLError(.notConnectedToInternet), at: 0)
-    ///     #expect(sut.errorMessage == "No internet connection")
-    ///
-    ///     // Test authentication error
-    ///     sut.loadUser(id: 2)
-    ///     spy.fail(with: URLError(.userAuthenticationRequired), at: 1)
-    ///     #expect(sut.errorMessage == "Please log in")
-    /// }
-    /// ```
     ///
     /// - Parameters:
     ///   - error: The error to throw from the `perform` call.
     ///   - index: The zero-based index of the request to fail. First call is 0, second is 1, etc.
-    ///
-    /// - Important: This method blocks the current thread using RunLoop until the error
-    ///   is processed. Use `withSpy` helpers for automatic handling in most cases.
     ///
     /// - Note: The result state will be set to `.failure` (not `.cancelled`) even if you
     ///   pass a `CancellationError`. Use `cancelPendingRequests()` for proper cancellation.
@@ -629,44 +470,6 @@ public final class FireAndForgetSpy {
     /// This method polls the result state asynchronously until it becomes available or the
     /// timeout expires. Use it when you need to wait for an operation to complete and inspect
     /// whether it succeeded, failed, or was cancelled.
-    ///
-    /// ## Usage Example
-    ///
-    /// ```swift
-    /// @Test func testResultStates() async throws {
-    ///     let spy = FireAndForgetSpy()
-    ///     let sut = UserViewModel(service: spy)
-    ///
-    ///     // Trigger operation
-    ///     sut.loadUser(id: 1)
-    ///
-    ///     // Complete it
-    ///     spy.complete(with: User(id: 1, name: "Alice"), at: 0)
-    ///
-    ///     // Wait for and verify result state
-    ///     let result = try await spy.result(at: 0, timeout: 2.0)
-    ///     #expect(result == .success)
-    /// }
-    /// ```
-    ///
-    /// ## Testing Cancellation
-    ///
-    /// ```swift
-    /// @Test func testCancellation() async throws {
-    ///     let spy = FireAndForgetSpy()
-    ///     let sut = UserViewModel(service: spy)
-    ///
-    ///     // Trigger operation
-    ///     sut.loadUser(id: 1)
-    ///
-    ///     // Cancel it
-    ///     try await spy.cancelPendingRequests()
-    ///
-    ///     // Verify cancellation
-    ///     let result = try await spy.result(at: 0)
-    ///     #expect(result == .cancelled)
-    /// }
-    /// ```
     ///
     /// - Parameters:
     ///   - index: The zero-based index of the request to query. First call is 0, second is 1, etc.
@@ -694,64 +497,13 @@ public final class FireAndForgetSpy {
     /// Cancels all pending async operations that haven't completed yet.
     ///
     /// This method finds all requests that don't have a result yet and finishes them with
-    /// `CancellationError`. It's essential for testing cancellation scenarios and for cleanup
-    /// in tests using direct spy usage (the `withSpy` helpers handle this automatically).
-    ///
-    /// ## Basic Cancellation Test
-    ///
-    /// ```swift
-    /// @Test func testLoadCancellation() async throws {
-    ///     let spy = FireAndForgetSpy()
-    ///     let sut = UserViewModel(service: spy)
-    ///
-    ///     // Trigger operation
-    ///     sut.loadUser(id: 1)
-    ///
-    ///     // Verify loading state
-    ///     #expect(sut.isLoading == true)
-    ///
-    ///     // Cancel all pending requests
-    ///     try await spy.cancelPendingRequests()
-    ///
-    ///     // Verify cancellation was handled
-    ///     let result = try await spy.result(at: 0)
-    ///     #expect(result == .cancelled)
-    ///     #expect(sut.isLoading == false)
-    /// }
-    /// ```
-    ///
-    /// ## Multiple Operations Cancellation
-    ///
-    /// ```swift
-    /// @Test func testCancelMultipleOperations() async throws {
-    ///     let spy = FireAndForgetSpy()
-    ///     let sut = UserViewModel(service: spy)
-    ///
-    ///     // Trigger multiple operations
-    ///     sut.loadUser(id: 1)
-    ///     sut.loadUser(id: 2)
-    ///     sut.loadUser(id: 3)
-    ///
-    ///     // Complete one
-    ///     spy.complete(with: User(id: 1, name: "Alice"), at: 0)
-    ///
-    ///     // Cancel remaining pending requests (indices 1 and 2)
-    ///     try await spy.cancelPendingRequests()
-    ///
-    ///     // Verify states
-    ///     #expect(try await spy.result(at: 0) == .success)
-    ///     #expect(try await spy.result(at: 1) == .cancelled)
-    ///     #expect(try await spy.result(at: 2) == .cancelled)
-    /// }
-    /// ```
+    /// `CancellationError`. It's essential for testing cancellation scenarios and for cleanup.
+    /// The `scenario {}` API calls this automatically after the body completes.
     ///
     /// - Throws: This method is marked `throws` for consistency but doesn't currently throw errors.
     ///
     /// - Important: This method only cancels **pending** requests (those without a result).
     ///   Completed, failed, or already-cancelled requests are unaffected.
-    ///
-    /// - Note: The `withSpy` helper functions automatically call this method for cleanup,
-    ///   so you typically don't need to call it manually when using helpers.
     public func cancelPendingRequests() async throws {
         for (index, request) in requests.enumerated() where request.result == nil {
             request.continuation.finish(throwing: CancellationError())
@@ -763,384 +515,162 @@ public final class FireAndForgetSpy {
     }
 }
 
-// MARK: - Test Helpers
+// MARK: - Scenario API
 
-/// Helper function for testing fire-and-forget async operations with successful completion.
-///
-/// This is the **recommended** way to test with `FireAndForgetSpy`. It provides a clean,
-/// fluent API for executing actions, verifying intermediate states, controlling completion,
-/// and verifying final states. It automatically handles cleanup by cancelling any remaining
-/// pending requests.
-///
-/// ## Flow
-///
-/// 1. **`action`**: Triggers the fire-and-forget SUT method (no `await`)
-/// 2. **`beforeCompletion`**: Verifies intermediate state (e.g., loading indicators)
-/// 3. **`completeWith`**: Provides the success value for the async operation
-/// 4. **`afterCompletion`**: Verifies final state after async completion
-/// 5. **Cleanup**: Automatically cancels any other pending requests
-///
-/// ## Basic Example
-///
-/// ```swift
-/// @Test func testLoadUserSuccess() async throws {
-///     let spy = FireAndForgetSpy()
-///     let sut = UserViewModel(service: spy)
-///     let expectedUser = User(id: 1, name: "Alice")
-///
-///     try await withSpy(spy) {
-///         sut.loadUser(id: 1)  // ← No await! Fire-and-forget
-///     } beforeCompletion: {
-///         #expect(sut.isLoading == true)
-///         #expect(sut.user == nil)
-///     } completeWith: {
-///         expectedUser
-///     } afterCompletion: {
-///         #expect(sut.isLoading == false)
-///         #expect(sut.user?.id == 1)
-///     }
-/// }
-/// ```
-///
-/// ## Testing Void-Returning Operations
-///
-/// ```swift
-/// @Test func testSyncData() async throws {
-///     let spy = FireAndForgetSpy()
-///     let sut = DataManager(service: spy)
-///
-///     try await withSpy(spy) {
-///         sut.syncData()
-///     } beforeCompletion: {
-///         #expect(sut.isSyncing == true)
-///     } completeWith: {
-///         ()  // Empty tuple for void operations
-///     } afterCompletion: {
-///         #expect(sut.isSyncing == false)
-///         #expect(sut.lastSyncDate != nil)
-///     }
-/// }
-/// ```
-///
-/// ## Multiple Operations
-///
-/// ```swift
-/// @Test func testMultipleLoads() async throws {
-///     let spy = FireAndForgetSpy()
-///     let sut = UserViewModel(service: spy)
-///
-///     // First operation (index 0)
-///     try await withSpy(spy, at: 0) {
-///         sut.loadUser(id: 1)
-///     } beforeCompletion: {
-///         #expect(sut.isLoading == true)
-///     } completeWith: {
-///         User(id: 1, name: "Alice")
-///     } afterCompletion: {
-///         #expect(sut.user?.name == "Alice")
-///     }
-///
-///     // Second operation (index 1)
-///     try await withSpy(spy, at: 1) {
-///         sut.loadUser(id: 2)
-///     } beforeCompletion: {
-///         #expect(sut.isLoading == true)
-///     } completeWith: {
-///         User(id: 2, name: "Bob")
-///     } afterCompletion: {
-///         #expect(sut.user?.name == "Bob")
-///     }
-/// }
-/// ```
-///
-/// - Parameters:
-///   - spy: The `FireAndForgetSpy` instance being tested.
-///   - index: The zero-based index of the request to complete. Defaults to 0 (first call).
-///   - action: Closure that triggers the fire-and-forget SUT method. Called **synchronously**.
-///   - beforeCompletion: Closure to verify intermediate state before async completion.
-///   - completeWith: Closure that returns the resource to complete the async operation with.
-///   - afterCompletion: Closure to verify final state after async completion.
-///
-/// - Throws: Errors from `cancelPendingRequests()` or if the test expectations fail.
-///
-/// - Note: This helper automatically cancels all other pending requests after completion,
-///   ensuring clean test isolation.
-public func withSpy(
-    _ spy: FireAndForgetSpy,
-    at index: Int = 0,
-    action: @escaping () -> Void,
-    beforeCompletion: @escaping () -> Void,
-    completeWith: @escaping () -> some Sendable,
-    afterCompletion: @escaping () -> Void
-) async throws {
-    action()
-    beforeCompletion()
-    let resource = completeWith()
-    await spy.complete(with: resource, at: index)
-    afterCompletion()
-    try await spy.cancelPendingRequests()
+public extension FireAndForgetSpy {
+    /// Defines how to complete a cascading operation.
+    enum CascadeCompletion {
+        case void
+        case success(any Sendable)
+        case failure(Error)
+        case skip
+    }
+
+    /// A step-by-step orchestrator for structured fire-and-forget test scenarios.
+    ///
+    /// `ScenarioStep` provides an imperative, sequential interface for testing fire-and-forget
+    /// operations. Instead of passing closures for each phase, you write steps in natural order
+    /// with inline assertions between them.
+    ///
+    /// ## Basic Usage
+    ///
+    /// ```swift
+    /// try await spy.scenario { step in
+    ///     await step.trigger { sut.loadUser(id: 1) }
+    ///     #expect(sut.isLoading)
+    ///     await step.complete(with: expectedUser)
+    ///     #expect(sut.user?.id == 1)
+    /// }
+    /// ```
+    @MainActor final class ScenarioStep {
+        private let spy: FireAndForgetSpy
+        private let yieldCount: Int
+        private var nextCascadeIndex: Int = 0
+
+        init(spy: FireAndForgetSpy, yieldCount: Int) {
+            self.spy = spy
+            self.yieldCount = yieldCount
+        }
+
+        /// Calls the synchronous process and yields to let internally-spawned tasks execute.
+        ///
+        /// Use this for fire-and-forget SUT methods that are synchronous but internally spawn
+        /// a `Task`. The process is called directly, then yields `yieldCount` times to allow
+        /// the internal Task to reach the spy's stream.
+        ///
+        /// ```swift
+        /// try await spy.scenario { step in
+        ///     await step.trigger { sut.loadUser(id: 1) }
+        ///     await step.complete(with: expectedUser)
+        /// }
+        /// ```
+        ///
+        /// - Parameter process: The synchronous operation to execute (typically calls the SUT).
+        public func trigger(_ process: () -> Void) async {
+            process()
+            for _ in 0 ..< yieldCount {
+                await Task.yield()
+            }
+        }
+
+        /// Completes the pending operation at the given index with a success value.
+        ///
+        /// Delegates to the spy's `complete(with:at:)` which polls until the result propagates,
+        /// then updates `nextCascadeIndex` to `index + 1` for subsequent cascade completions.
+        ///
+        /// - Parameters:
+        ///   - result: The value to complete the operation with.
+        ///   - index: The index of the pending operation to complete (default is 0).
+        public func complete(with result: some Sendable, at index: Int = 0) async {
+            await spy.complete(with: result, at: index)
+            nextCascadeIndex = index + 1
+        }
+
+        /// Fails the pending operation at the given index with an error.
+        ///
+        /// Delegates to the spy's `fail(with:at:)` which polls until the result propagates,
+        /// then updates `nextCascadeIndex` to `index + 1`.
+        ///
+        /// - Parameters:
+        ///   - error: The error to fail the operation with.
+        ///   - index: The index of the pending operation to fail (default is 0).
+        public func fail(with error: Error, at index: Int = 0) async {
+            await spy.fail(with: error, at: index)
+            nextCascadeIndex = index + 1
+        }
+
+        /// Cancels all pending requests that haven't completed yet.
+        ///
+        /// Delegates to the spy's `cancelPendingRequests()`.
+        public func cancel() async throws {
+            try await spy.cancelPendingRequests()
+        }
+
+        /// Completes cascading operations that were triggered by the primary completion.
+        ///
+        /// When completing the primary operation causes the SUT to make additional async calls
+        /// (e.g., delete then reload), use `cascade` to complete those subsequent operations.
+        /// Each completion is applied at `nextCascadeIndex` (auto-incremented).
+        ///
+        /// ```swift
+        /// try await spy.scenario { step in
+        ///     await step.trigger { sut.deleteAndReload(item) }
+        ///     await step.complete(with: ())          // completes delete at index 0
+        ///     await step.cascade(.success(newList))   // completes reload at index 1
+        ///     #expect(sut.items == newList)
+        /// }
+        /// ```
+        ///
+        /// - Parameter completions: One or more `CascadeCompletion` values to apply in order.
+        public func cascade(_ completions: CascadeCompletion...) async {
+            for completion in completions {
+                switch completion {
+                case .void:
+                    await spy.complete(with: (), at: nextCascadeIndex)
+                case let .success(value):
+                    await spy.complete(with: value, at: nextCascadeIndex)
+                case let .failure(error):
+                    await spy.fail(with: error, at: nextCascadeIndex)
+                case .skip:
+                    break
+                }
+                nextCascadeIndex += 1
+            }
+        }
+    }
+
+    /// Executes a structured test scenario with step-by-step phase control.
+    ///
+    /// `scenario` creates a `ScenarioStep` context and auto-cancels all pending operations
+    /// after the body completes (matching previous `withSpy` cleanup behavior).
+    ///
+    /// ## Overview
+    ///
+    /// ```swift
+    /// try await spy.scenario { step in
+    ///     await step.trigger { sut.loadUser(id: 1) }
+    ///     #expect(sut.isLoading)
+    ///     await step.complete(with: expectedUser)
+    ///     #expect(sut.user?.id == 1)
+    /// }
+    /// ```
+    ///
+    /// ## How `yieldCount` Affects Timing
+    ///
+    /// The `yieldCount` controls how many times `Task.yield()` is called after each trigger.
+    /// Higher values give internally-spawned tasks more opportunities to progress. The default
+    /// of 1 is sufficient for most cases; increase it when the SUT has multiple suspension
+    /// points before reaching the spy.
+    ///
+    /// - Parameters:
+    ///   - yieldCount: Number of times to yield after each trigger (default is 1).
+    ///   - body: A closure receiving a ``ScenarioStep`` for orchestrating the test phases.
+    func scenario(
+        yieldCount: Int = 1,
+        _ body: (ScenarioStep) async throws -> Void
+    ) async throws {
+        let step = ScenarioStep(spy: self, yieldCount: yieldCount)
+        try await body(step)
+        try await cancelPendingRequests()
+    }
 }
-
-/// Helper function for testing fire-and-forget async operations with failure completion.
-///
-/// Use this variant when testing error scenarios. It follows the same flow as the success
-/// helper but completes the async operation with an error instead of a success value.
-/// Automatically handles cleanup by cancelling remaining pending requests.
-///
-/// ## Flow
-///
-/// 1. **`action`**: Triggers the fire-and-forget SUT method (no `await`)
-/// 2. **`beforeCompletion`**: Verifies intermediate state before failure
-/// 3. **`failWith`**: Provides the error to fail the async operation with
-/// 4. **`afterCompletion`**: Verifies final error state
-/// 5. **Cleanup**: Automatically cancels any other pending requests
-///
-/// ## Basic Error Handling Example
-///
-/// ```swift
-/// @Test func testLoadUserFailure() async throws {
-///     let spy = FireAndForgetSpy()
-///     let sut = UserViewModel(service: spy)
-///     struct NetworkError: Error {}
-///
-///     try await withSpy(spy) {
-///         sut.loadUser(id: 999)  // ← No await! Fire-and-forget
-///     } beforeCompletion: {
-///         #expect(sut.isLoading == true)
-///         #expect(sut.error == nil)
-///     } failWith: {
-///         NetworkError()
-///     } afterCompletion: {
-///         #expect(sut.isLoading == false)
-///         #expect(sut.user == nil)
-///         #expect(sut.error != nil)
-///     }
-/// }
-/// ```
-///
-/// ## Testing Different Error Types
-///
-/// ```swift
-/// @Test func testNetworkErrors() async throws {
-///     let spy = FireAndForgetSpy()
-///     let sut = UserViewModel(service: spy)
-///
-///     // Test no internet connection
-///     try await withSpy(spy, at: 0) {
-///         sut.loadUser(id: 1)
-///     } beforeCompletion: {
-///         #expect(sut.isLoading == true)
-///     } failWith: {
-///         URLError(.notConnectedToInternet)
-///     } afterCompletion: {
-///         #expect(sut.errorMessage == "No internet connection")
-///     }
-///
-///     // Test server error
-///     try await withSpy(spy, at: 1) {
-///         sut.loadUser(id: 2)
-///     } beforeCompletion: {
-///         #expect(sut.isLoading == true)
-///     } failWith: {
-///         URLError(.badServerResponse)
-///     } afterCompletion: {
-///         #expect(sut.errorMessage == "Server error")
-///     }
-/// }
-/// ```
-///
-/// ## Testing Error Recovery
-///
-/// ```swift
-/// @Test func testRetryAfterFailure() async throws {
-///     let spy = FireAndForgetSpy()
-///     let sut = UserViewModel(service: spy)
-///     let user = User(id: 1, name: "Alice")
-///
-///     // First attempt fails
-///     try await withSpy(spy, at: 0) {
-///         sut.loadUser(id: 1)
-///     } beforeCompletion: {
-///         #expect(sut.isLoading == true)
-///     } failWith: {
-///         NetworkError()
-///     } afterCompletion: {
-///         #expect(sut.error != nil)
-///     }
-///
-///     // Retry succeeds
-///     try await withSpy(spy, at: 1) {
-///         sut.retry()
-///     } beforeCompletion: {
-///         #expect(sut.isLoading == true)
-///         #expect(sut.error == nil)  // Error cleared on retry
-///     } completeWith: {
-///         user
-///     } afterCompletion: {
-///         #expect(sut.user?.id == 1)
-///         #expect(sut.error == nil)
-///     }
-/// }
-/// ```
-///
-/// - Parameters:
-///   - spy: The `FireAndForgetSpy` instance being tested.
-///   - index: The zero-based index of the request to fail. Defaults to 0 (first call).
-///   - action: Closure that triggers the fire-and-forget SUT method. Called **synchronously**.
-///   - beforeCompletion: Closure to verify intermediate state before failure.
-///   - failWith: Closure that returns the error to fail the async operation with.
-///   - atIndex: Deprecated parameter, not used. Will be removed in future versions.
-///   - afterCompletion: Closure to verify final error state after async completion.
-///
-/// - Throws: Errors from `cancelPendingRequests()` or if the test expectations fail.
-///
-/// - Note: This helper automatically cancels all other pending requests after failure,
-///   ensuring clean test isolation.
-public func withSpy(
-    _ spy: FireAndForgetSpy,
-    at index: Int = 0,
-    action: @escaping () -> Void,
-    beforeCompletion: @escaping () -> Void,
-    failWith: @escaping () -> some Error,
-    atIndex: @escaping () -> Int = { 0 },
-    afterCompletion: @escaping () -> Void
-) async throws {
-    action()
-    beforeCompletion()
-    let error = failWith()
-    await spy.fail(with: error, at: index)
-    afterCompletion()
-    try await spy.cancelPendingRequests()
-}
-
-/// Helper function for testing fire-and-forget async operations by inspecting their result state.
-///
-/// Use this variant when you want to test how the SUT handles async operations without
-/// manually controlling completion. This is particularly useful for testing **cancellation**
-/// scenarios or when the SUT itself controls how the async operation completes.
-///
-/// ## Flow
-///
-/// 1. **`action`**: Triggers the fire-and-forget SUT method (no `await`)
-/// 2. **Wait**: Waits for the async operation to complete (with timeout)
-/// 3. **`expect`**: Receives the result state and allows you to verify it
-///
-/// ## Testing Cancellation
-///
-/// ```swift
-/// @Test func testUserCancelsLoad() async throws {
-///     let spy = FireAndForgetSpy()
-///     let sut = UserViewModel(service: spy)
-///
-///     try await withSpy(spy) {
-///         sut.loadUser(id: 1)
-///         sut.cancelLoad()  // SUT handles cancellation internally
-///     } expect: { result in
-///         #expect(result == .cancelled)
-///         #expect(sut.user == nil)
-///         #expect(sut.isLoading == false)
-///     }
-/// }
-/// ```
-///
-/// ## Testing Self-Completing Operations
-///
-/// ```swift
-/// @Test func testAutoRetrySuccess() async throws {
-///     let spy = FireAndForgetSpy()
-///     let sut = ResilientViewModel(service: spy)
-///
-///     try await withSpy(spy, at: 0) {
-///         // SUT handles retry logic and completes the spy internally
-///         sut.loadWithAutoRetry(id: 1)
-///     } expect: { result in
-///         #expect(result == .success)
-///         #expect(sut.retryCount == 2)  // Auto-retried twice
-///         #expect(sut.user != nil)
-///     }
-/// }
-/// ```
-///
-/// ## Testing Multiple Independent Operations
-///
-/// ```swift
-/// @Test func testConcurrentLoads() async throws {
-///     let spy = FireAndForgetSpy()
-///     let sut = UserListViewModel(service: spy)
-///
-///     // Trigger concurrent loads
-///     sut.loadUser(id: 1)
-///     sut.loadUser(id: 2)
-///     sut.loadUser(id: 3)
-///
-///     // First completes successfully
-///     try await withSpy(spy, at: 0) {
-///         // Operation already triggered above
-///     } expect: { result in
-///         #expect(result == .success)
-///     }
-///
-///     // Second is cancelled
-///     try await withSpy(spy, at: 1) {
-///         // Already triggered
-///     } expect: { result in
-///         #expect(result == .cancelled)
-///     }
-///
-///     // Third fails
-///     try await withSpy(spy, at: 2) {
-///         // Already triggered
-///     } expect: { result in
-///         #expect(result == .failure)
-///     }
-/// }
-/// ```
-///
-/// ## Inspecting Request Parameters
-///
-/// ```swift
-/// @Test func testRequestParameters() async throws {
-///     let spy = FireAndForgetSpy()
-///     let sut = UserViewModel(service: spy)
-///
-///     try await withSpy(spy, at: 0) {
-///         sut.loadUser(id: 42)
-///     } expect: { result in
-///         // Verify the spy was called with correct parameters
-///         #expect(spy.requests[0].params.count == 1)
-///         #expect(spy.requests[0].params[0] as? Int == 42)
-///         #expect(result == .success)
-///     }
-/// }
-/// ```
-///
-/// - Parameters:
-///   - spy: The `FireAndForgetSpy` instance being tested.
-///   - index: The zero-based index of the request to inspect. Defaults to 0 (first call).
-///   - action: Closure that triggers the fire-and-forget SUT method. Called **synchronously**.
-///   - expect: Closure that receives the result state for verification.
-///
-/// - Throws: `Timeout` error if the result is not available within the default 1-second timeout,
-///   or if the test expectations fail.
-///
-/// - Important: Unlike the other `withSpy` helpers, this variant does **NOT** automatically
-///   cancel pending requests. You must manually call `spy.cancelPendingRequests()` if needed
-///   for test cleanup.
-///
-/// - Note: The SUT is responsible for completing the async operation. If it never completes,
-///   this will timeout after 1 second (default timeout in `spy.result(at:)`).
-public func withSpy(
-    _ spy: FireAndForgetSpy,
-    at index: Int = 0,
-    action: @escaping () -> Void,
-    expect: @escaping (FireAndForgetSpy.Result) -> Void
-) async throws {
-    action()
-    let result = try await spy.result(at: index)
-    expect(result)
-}
-
-// MARK: - Backward Compatibility
-
-@available(*, deprecated, renamed: "FireAndForgetSpy")
-public typealias NonBlockingAsyncSpy = FireAndForgetSpy
