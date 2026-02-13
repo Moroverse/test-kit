@@ -125,7 +125,7 @@ struct FireAndForgetSpyTests {
             await step.trigger { sut.loadUser(id: 1) }
             try await step.cancel()
             let result = try await spy.result(at: 0)
-            #expect(result == .failure)
+            #expect(result == .cancelled)
             #expect(sut.error is CancellationError)
         }
     }
@@ -196,7 +196,7 @@ struct FireAndForgetSpyTests {
         }
 
         let result = try await spy.result(at: 0)
-        #expect(result == .failure)
+        #expect(result == .cancelled)
         #expect(sut.error is CancellationError)
     }
 

@@ -335,7 +335,7 @@ public final class FireAndForgetSpy {
 
             throw NoResponse()
         } catch {
-            if Task.isCancelled {
+            if Task.isCancelled || error is CancellationError {
                 requests[index].result = .cancelled
             } else {
                 requests[index].result = .failure
@@ -415,7 +415,7 @@ public final class FireAndForgetSpy {
 
             throw NoResponse()
         } catch {
-            if Task.isCancelled {
+            if Task.isCancelled || error is CancellationError {
                 requests[index].result = .cancelled
             } else {
                 requests[index].result = .failure
