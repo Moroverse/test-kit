@@ -4,7 +4,7 @@ A comprehensive Swift testing utilities library designed to simplify and enhance
 
 ## Features
 
-- **Async Test Doubles**: `AsyncSpy` and `NonBlockingAsyncSpy` for controlling and verifying async operations
+- **Async Test Doubles**: `AsyncSpy` and `FireAndForgetSpy` for controlling and verifying async operations
 - **Memory Leak Detection**: Track objects and verify proper deallocation with `.teardownTracking()`
 - **Expectation Tracking**: Fluent API for verifying async operation results
 - **Change Tracking**: Verify property mutations with before/after assertions

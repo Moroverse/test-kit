@@ -1,26 +1,26 @@
-// NonBlockingAsyncSpy.swift
+// FireAndForgetSpy.swift
 // Copyright (c) 2026 Moroverse
 // Created by Daniel Moro on 2025-11-20 08:00 GMT.
 
 import Foundation
 
-/// A test spy for verifying non-blocking asynchronous operations where the system under test
+/// A test spy for verifying fire-and-forget asynchronous operations where the system under test
 /// calls a method **synchronously** (without `await`) that triggers async work internally.
 ///
 /// ## Overview
 ///
-/// `NonBlockingAsyncSpy` is designed for testing code that initiates async operations through
+/// `FireAndForgetSpy` is designed for testing code that initiates async operations through
 /// fire-and-forget method calls. Unlike `AsyncSpy` where you `await` the SUT action directly,
-/// `NonBlockingAsyncSpy` handles scenarios where:
+/// `FireAndForgetSpy` handles scenarios where:
 /// - The SUT method returns immediately (synchronous call)
 /// - Async work is spawned internally (Task, async/await, etc.)
 /// - You need to control when and how the async operation completes
 /// - You want to verify intermediate states (loading, error states, etc.)
 ///
-/// ## When to Use NonBlockingAsyncSpy vs AsyncSpy
+/// ## When to Use FireAndForgetSpy vs AsyncSpy
 ///
-/// **Use `NonBlockingAsyncSpy` when:**
-/// - SUT methods are called **without `await`** (fire-and-forget pattern)
+/// **Use `FireAndForgetSpy` when:**
+/// - The SUT fires off async work without awaiting it (fire-and-forget pattern)
 /// - Testing ViewModels with methods like `loadData()`, `refresh()`, etc.
 /// - You need to verify state changes **before** and **after** async completion
 /// - Testing cancellation behavior and cleanup
@@ -38,8 +38,8 @@ import Foundation
 ///     func loadUser(id: Int) async throws -> User
 /// }
 ///
-/// // 2. Make NonBlockingAsyncSpy conform to your protocol
-/// extension NonBlockingAsyncSpy: UserServiceProtocol {
+/// // 2. Make FireAndForgetSpy conform to your protocol
+/// extension FireAndForgetSpy: UserServiceProtocol {
 ///     func loadUser(id: Int) async throws -> User {
 ///         try await perform(id)
 ///     }
@@ -77,12 +77,12 @@ import Foundation
 ///
 /// // 4. Test using withSpy helper (recommended approach)
 /// @Test func testLoadUserSuccess() async throws {
-///     let spy = NonBlockingAsyncSpy()
+///     let spy = FireAndForgetSpy()
 ///     let sut = UserViewModel(service: spy)
 ///     let expectedUser = User(id: 1, name: "Alice")
 ///
 ///     try await withSpy(spy) {
-///         sut.loadUser(id: 1)  // ← No await! Non-blocking call
+///         sut.loadUser(id: 1)  // ← No await! Fire-and-forget call
 ///     } beforeCompletion: {
 ///         #expect(sut.isLoading == true)   // Verify loading state
 ///         #expect(sut.user == nil)
@@ -98,7 +98,7 @@ import Foundation
 ///
 /// // 5. Test error handling
 /// @Test func testLoadUserFailure() async throws {
-///     let spy = NonBlockingAsyncSpy()
+///     let spy = FireAndForgetSpy()
 ///     let sut = UserViewModel(service: spy)
 ///     struct TestError: Error {}
 ///
@@ -118,7 +118,7 @@ import Foundation
 ///
 /// // 6. Advanced: Direct usage without withSpy helper
 /// @Test func testLoadUserCancellation() async throws {
-///     let spy = NonBlockingAsyncSpy()
+///     let spy = FireAndForgetSpy()
 ///     let sut = UserViewModel(service: spy)
 ///
 ///     // Trigger the operation
@@ -153,9 +153,9 @@ import Foundation
 /// - ❌ **Don't forget to complete/fail**: Pending requests will timeout
 /// - ✅ **Do use `withSpy` helpers**: They handle completion and cleanup automatically
 /// - ❌ **Don't use for methods you await**: Use `AsyncSpy` instead
-/// - ✅ **Do verify intermediate states**: That's the whole point of non-blocking testing
+/// - ✅ **Do verify intermediate states**: That's the whole point of fire-and-forget testing
 ///
-public final class NonBlockingAsyncSpy {
+public final class FireAndForgetSpy {
     /// Represents the result state of an async operation tracked by the spy.
     ///
     /// Use this enum to verify the outcome of async operations in your tests, especially
@@ -166,7 +166,7 @@ public final class NonBlockingAsyncSpy {
     ///
     /// ```swift
     /// @Test func testCancellation() async throws {
-    ///     let spy = NonBlockingAsyncSpy()
+    ///     let spy = FireAndForgetSpy()
     ///     let sut = MyViewModel(service: spy)
     ///
     ///     sut.loadData()  // Triggers async work
@@ -214,7 +214,7 @@ public final class NonBlockingAsyncSpy {
     ///
     /// ```swift
     /// @Test func testMultipleLoadCalls() async throws {
-    ///     let spy = NonBlockingAsyncSpy()
+    ///     let spy = FireAndForgetSpy()
     ///     let sut = UserViewModel(service: spy)
     ///
     ///     sut.loadUser(id: 1)
@@ -241,7 +241,7 @@ public final class NonBlockingAsyncSpy {
     /// ## Usage Example
     ///
     /// ```swift
-    /// extension NonBlockingAsyncSpy: UserServiceProtocol {
+    /// extension FireAndForgetSpy: UserServiceProtocol {
     ///     func loadUser(id: Int) async throws -> User {
     ///         try await perform(id, tag: "loadUser")
     ///     }
@@ -252,7 +252,7 @@ public final class NonBlockingAsyncSpy {
     /// }
     ///
     /// @Test func testUserOperations() async throws {
-    ///     let spy = NonBlockingAsyncSpy()
+    ///     let spy = FireAndForgetSpy()
     ///     let sut = UserViewModel(service: spy)
     ///
     ///     sut.loadUser(id: 1)
@@ -286,7 +286,7 @@ public final class NonBlockingAsyncSpy {
     ///     func loadUser(id: Int) async throws -> User
     /// }
     ///
-    /// extension NonBlockingAsyncSpy: UserServiceProtocol {
+    /// extension FireAndForgetSpy: UserServiceProtocol {
     ///     func loadUser(id: Int) async throws -> User {
     ///         try await perform(id, tag: "loadUser")
     ///     }
@@ -297,7 +297,7 @@ public final class NonBlockingAsyncSpy {
     ///
     /// ```swift
     /// @Test func testLoadUserDirect() async throws {
-    ///     let spy = NonBlockingAsyncSpy()
+    ///     let spy = FireAndForgetSpy()
     ///     let sut = UserViewModel(service: spy)
     ///     let expectedUser = User(id: 1, name: "Alice")
     ///
@@ -397,7 +397,7 @@ public final class NonBlockingAsyncSpy {
     ///     func syncData() async throws
     /// }
     ///
-    /// extension NonBlockingAsyncSpy: UserServiceProtocol {
+    /// extension FireAndForgetSpy: UserServiceProtocol {
     ///     func deleteUser(id: Int) async throws {
     ///         try await perform(id, tag: "deleteUser")
     ///     }
@@ -412,11 +412,11 @@ public final class NonBlockingAsyncSpy {
     ///
     /// ```swift
     /// @Test func testDeleteUser() async throws {
-    ///     let spy = NonBlockingAsyncSpy()
+    ///     let spy = FireAndForgetSpy()
     ///     let sut = UserViewModel(service: spy)
     ///
     ///     try await withSpy(spy) {
-    ///         sut.deleteUser(id: 42)  // No await - non-blocking
+    ///         sut.deleteUser(id: 42)  // No await - fire-and-forget
     ///     } beforeCompletion: {
     ///         #expect(sut.isDeleting == true)
     ///     } completeWith: {
@@ -494,7 +494,7 @@ public final class NonBlockingAsyncSpy {
     ///
     /// ```swift
     /// @Test func testManualCompletion() async throws {
-    ///     let spy = NonBlockingAsyncSpy()
+    ///     let spy = FireAndForgetSpy()
     ///     let sut = UserViewModel(service: spy)
     ///     let expectedUser = User(id: 1, name: "Alice")
     ///
@@ -521,7 +521,7 @@ public final class NonBlockingAsyncSpy {
     ///
     /// ```swift
     /// @Test func testMultipleOperations() async throws {
-    ///     let spy = NonBlockingAsyncSpy()
+    ///     let spy = FireAndForgetSpy()
     ///     let sut = UserViewModel(service: spy)
     ///
     ///     // Trigger two operations
@@ -564,7 +564,7 @@ public final class NonBlockingAsyncSpy {
     ///
     /// ```swift
     /// @Test func testManualFailure() async throws {
-    ///     let spy = NonBlockingAsyncSpy()
+    ///     let spy = FireAndForgetSpy()
     ///     let sut = UserViewModel(service: spy)
     ///     struct NetworkError: Error {}
     ///
@@ -592,7 +592,7 @@ public final class NonBlockingAsyncSpy {
     ///
     /// ```swift
     /// @Test func testDifferentErrors() async throws {
-    ///     let spy = NonBlockingAsyncSpy()
+    ///     let spy = FireAndForgetSpy()
     ///     let sut = UserViewModel(service: spy)
     ///
     ///     // Test network error
@@ -634,7 +634,7 @@ public final class NonBlockingAsyncSpy {
     ///
     /// ```swift
     /// @Test func testResultStates() async throws {
-    ///     let spy = NonBlockingAsyncSpy()
+    ///     let spy = FireAndForgetSpy()
     ///     let sut = UserViewModel(service: spy)
     ///
     ///     // Trigger operation
@@ -653,7 +653,7 @@ public final class NonBlockingAsyncSpy {
     ///
     /// ```swift
     /// @Test func testCancellation() async throws {
-    ///     let spy = NonBlockingAsyncSpy()
+    ///     let spy = FireAndForgetSpy()
     ///     let sut = UserViewModel(service: spy)
     ///
     ///     // Trigger operation
@@ -701,7 +701,7 @@ public final class NonBlockingAsyncSpy {
     ///
     /// ```swift
     /// @Test func testLoadCancellation() async throws {
-    ///     let spy = NonBlockingAsyncSpy()
+    ///     let spy = FireAndForgetSpy()
     ///     let sut = UserViewModel(service: spy)
     ///
     ///     // Trigger operation
@@ -724,7 +724,7 @@ public final class NonBlockingAsyncSpy {
     ///
     /// ```swift
     /// @Test func testCancelMultipleOperations() async throws {
-    ///     let spy = NonBlockingAsyncSpy()
+    ///     let spy = FireAndForgetSpy()
     ///     let sut = UserViewModel(service: spy)
     ///
     ///     // Trigger multiple operations
@@ -765,16 +765,16 @@ public final class NonBlockingAsyncSpy {
 
 // MARK: - Test Helpers
 
-/// Helper function for testing non-blocking async operations with successful completion.
+/// Helper function for testing fire-and-forget async operations with successful completion.
 ///
-/// This is the **recommended** way to test with `NonBlockingAsyncSpy`. It provides a clean,
+/// This is the **recommended** way to test with `FireAndForgetSpy`. It provides a clean,
 /// fluent API for executing actions, verifying intermediate states, controlling completion,
 /// and verifying final states. It automatically handles cleanup by cancelling any remaining
 /// pending requests.
 ///
 /// ## Flow
 ///
-/// 1. **`action`**: Triggers the non-blocking SUT method (no `await`)
+/// 1. **`action`**: Triggers the fire-and-forget SUT method (no `await`)
 /// 2. **`beforeCompletion`**: Verifies intermediate state (e.g., loading indicators)
 /// 3. **`completeWith`**: Provides the success value for the async operation
 /// 4. **`afterCompletion`**: Verifies final state after async completion
@@ -784,12 +784,12 @@ public final class NonBlockingAsyncSpy {
 ///
 /// ```swift
 /// @Test func testLoadUserSuccess() async throws {
-///     let spy = NonBlockingAsyncSpy()
+///     let spy = FireAndForgetSpy()
 ///     let sut = UserViewModel(service: spy)
 ///     let expectedUser = User(id: 1, name: "Alice")
 ///
 ///     try await withSpy(spy) {
-///         sut.loadUser(id: 1)  // ← No await! Non-blocking
+///         sut.loadUser(id: 1)  // ← No await! Fire-and-forget
 ///     } beforeCompletion: {
 ///         #expect(sut.isLoading == true)
 ///         #expect(sut.user == nil)
@@ -806,7 +806,7 @@ public final class NonBlockingAsyncSpy {
 ///
 /// ```swift
 /// @Test func testSyncData() async throws {
-///     let spy = NonBlockingAsyncSpy()
+///     let spy = FireAndForgetSpy()
 ///     let sut = DataManager(service: spy)
 ///
 ///     try await withSpy(spy) {
@@ -826,7 +826,7 @@ public final class NonBlockingAsyncSpy {
 ///
 /// ```swift
 /// @Test func testMultipleLoads() async throws {
-///     let spy = NonBlockingAsyncSpy()
+///     let spy = FireAndForgetSpy()
 ///     let sut = UserViewModel(service: spy)
 ///
 ///     // First operation (index 0)
@@ -854,9 +854,9 @@ public final class NonBlockingAsyncSpy {
 /// ```
 ///
 /// - Parameters:
-///   - spy: The `NonBlockingAsyncSpy` instance being tested.
+///   - spy: The `FireAndForgetSpy` instance being tested.
 ///   - index: The zero-based index of the request to complete. Defaults to 0 (first call).
-///   - action: Closure that triggers the non-blocking SUT method. Called **synchronously**.
+///   - action: Closure that triggers the fire-and-forget SUT method. Called **synchronously**.
 ///   - beforeCompletion: Closure to verify intermediate state before async completion.
 ///   - completeWith: Closure that returns the resource to complete the async operation with.
 ///   - afterCompletion: Closure to verify final state after async completion.
@@ -866,7 +866,7 @@ public final class NonBlockingAsyncSpy {
 /// - Note: This helper automatically cancels all other pending requests after completion,
 ///   ensuring clean test isolation.
 public func withSpy(
-    _ spy: NonBlockingAsyncSpy,
+    _ spy: FireAndForgetSpy,
     at index: Int = 0,
     action: @escaping () -> Void,
     beforeCompletion: @escaping () -> Void,
@@ -881,7 +881,7 @@ public func withSpy(
     try await spy.cancelPendingRequests()
 }
 
-/// Helper function for testing non-blocking async operations with failure completion.
+/// Helper function for testing fire-and-forget async operations with failure completion.
 ///
 /// Use this variant when testing error scenarios. It follows the same flow as the success
 /// helper but completes the async operation with an error instead of a success value.
@@ -889,7 +889,7 @@ public func withSpy(
 ///
 /// ## Flow
 ///
-/// 1. **`action`**: Triggers the non-blocking SUT method (no `await`)
+/// 1. **`action`**: Triggers the fire-and-forget SUT method (no `await`)
 /// 2. **`beforeCompletion`**: Verifies intermediate state before failure
 /// 3. **`failWith`**: Provides the error to fail the async operation with
 /// 4. **`afterCompletion`**: Verifies final error state
@@ -899,12 +899,12 @@ public func withSpy(
 ///
 /// ```swift
 /// @Test func testLoadUserFailure() async throws {
-///     let spy = NonBlockingAsyncSpy()
+///     let spy = FireAndForgetSpy()
 ///     let sut = UserViewModel(service: spy)
 ///     struct NetworkError: Error {}
 ///
 ///     try await withSpy(spy) {
-///         sut.loadUser(id: 999)  // ← No await! Non-blocking
+///         sut.loadUser(id: 999)  // ← No await! Fire-and-forget
 ///     } beforeCompletion: {
 ///         #expect(sut.isLoading == true)
 ///         #expect(sut.error == nil)
@@ -922,7 +922,7 @@ public func withSpy(
 ///
 /// ```swift
 /// @Test func testNetworkErrors() async throws {
-///     let spy = NonBlockingAsyncSpy()
+///     let spy = FireAndForgetSpy()
 ///     let sut = UserViewModel(service: spy)
 ///
 ///     // Test no internet connection
@@ -953,7 +953,7 @@ public func withSpy(
 ///
 /// ```swift
 /// @Test func testRetryAfterFailure() async throws {
-///     let spy = NonBlockingAsyncSpy()
+///     let spy = FireAndForgetSpy()
 ///     let sut = UserViewModel(service: spy)
 ///     let user = User(id: 1, name: "Alice")
 ///
@@ -984,9 +984,9 @@ public func withSpy(
 /// ```
 ///
 /// - Parameters:
-///   - spy: The `NonBlockingAsyncSpy` instance being tested.
+///   - spy: The `FireAndForgetSpy` instance being tested.
 ///   - index: The zero-based index of the request to fail. Defaults to 0 (first call).
-///   - action: Closure that triggers the non-blocking SUT method. Called **synchronously**.
+///   - action: Closure that triggers the fire-and-forget SUT method. Called **synchronously**.
 ///   - beforeCompletion: Closure to verify intermediate state before failure.
 ///   - failWith: Closure that returns the error to fail the async operation with.
 ///   - atIndex: Deprecated parameter, not used. Will be removed in future versions.
@@ -997,7 +997,7 @@ public func withSpy(
 /// - Note: This helper automatically cancels all other pending requests after failure,
 ///   ensuring clean test isolation.
 public func withSpy(
-    _ spy: NonBlockingAsyncSpy,
+    _ spy: FireAndForgetSpy,
     at index: Int = 0,
     action: @escaping () -> Void,
     beforeCompletion: @escaping () -> Void,
@@ -1013,7 +1013,7 @@ public func withSpy(
     try await spy.cancelPendingRequests()
 }
 
-/// Helper function for testing non-blocking async operations by inspecting their result state.
+/// Helper function for testing fire-and-forget async operations by inspecting their result state.
 ///
 /// Use this variant when you want to test how the SUT handles async operations without
 /// manually controlling completion. This is particularly useful for testing **cancellation**
@@ -1021,7 +1021,7 @@ public func withSpy(
 ///
 /// ## Flow
 ///
-/// 1. **`action`**: Triggers the non-blocking SUT method (no `await`)
+/// 1. **`action`**: Triggers the fire-and-forget SUT method (no `await`)
 /// 2. **Wait**: Waits for the async operation to complete (with timeout)
 /// 3. **`expect`**: Receives the result state and allows you to verify it
 ///
@@ -1029,7 +1029,7 @@ public func withSpy(
 ///
 /// ```swift
 /// @Test func testUserCancelsLoad() async throws {
-///     let spy = NonBlockingAsyncSpy()
+///     let spy = FireAndForgetSpy()
 ///     let sut = UserViewModel(service: spy)
 ///
 ///     try await withSpy(spy) {
@@ -1047,7 +1047,7 @@ public func withSpy(
 ///
 /// ```swift
 /// @Test func testAutoRetrySuccess() async throws {
-///     let spy = NonBlockingAsyncSpy()
+///     let spy = FireAndForgetSpy()
 ///     let sut = ResilientViewModel(service: spy)
 ///
 ///     try await withSpy(spy, at: 0) {
@@ -1065,7 +1065,7 @@ public func withSpy(
 ///
 /// ```swift
 /// @Test func testConcurrentLoads() async throws {
-///     let spy = NonBlockingAsyncSpy()
+///     let spy = FireAndForgetSpy()
 ///     let sut = UserListViewModel(service: spy)
 ///
 ///     // Trigger concurrent loads
@@ -1100,7 +1100,7 @@ public func withSpy(
 ///
 /// ```swift
 /// @Test func testRequestParameters() async throws {
-///     let spy = NonBlockingAsyncSpy()
+///     let spy = FireAndForgetSpy()
 ///     let sut = UserViewModel(service: spy)
 ///
 ///     try await withSpy(spy, at: 0) {
@@ -1115,9 +1115,9 @@ public func withSpy(
 /// ```
 ///
 /// - Parameters:
-///   - spy: The `NonBlockingAsyncSpy` instance being tested.
+///   - spy: The `FireAndForgetSpy` instance being tested.
 ///   - index: The zero-based index of the request to inspect. Defaults to 0 (first call).
-///   - action: Closure that triggers the non-blocking SUT method. Called **synchronously**.
+///   - action: Closure that triggers the fire-and-forget SUT method. Called **synchronously**.
 ///   - expect: Closure that receives the result state for verification.
 ///
 /// - Throws: `Timeout` error if the result is not available within the default 1-second timeout,
@@ -1130,12 +1130,17 @@ public func withSpy(
 /// - Note: The SUT is responsible for completing the async operation. If it never completes,
 ///   this will timeout after 1 second (default timeout in `spy.result(at:)`).
 public func withSpy(
-    _ spy: NonBlockingAsyncSpy,
+    _ spy: FireAndForgetSpy,
     at index: Int = 0,
     action: @escaping () -> Void,
-    expect: @escaping (NonBlockingAsyncSpy.Result) -> Void
+    expect: @escaping (FireAndForgetSpy.Result) -> Void
 ) async throws {
     action()
     let result = try await spy.result(at: index)
     expect(result)
 }
+
+// MARK: - Backward Compatibility
+
+@available(*, deprecated, renamed: "FireAndForgetSpy")
+public typealias NonBlockingAsyncSpy = FireAndForgetSpy

@@ -21,7 +21,7 @@ Control and verify asynchronous operations with test spies.
 - ``AsyncSpy/ScenarioStep``
 - ``AsyncSpy/CascadeCompletion``
 - ``AsyncSpy/CascadePolicy``
-- ``NonBlockingAsyncSpy``
+- ``FireAndForgetSpy``
 
 ### Fluent Expectations
 

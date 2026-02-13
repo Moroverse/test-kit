@@ -26,7 +26,7 @@ CI runs on macOS 15 with latest stable Xcode via GitHub Actions (`swift.yml`).
 
 **Test Doubles** — Core async spying infrastructure:
 - `AsyncSpy` — Controls blocking async operations using `CheckedContinuation`. Call `async {}` or `synchronous {}` to wrap the operation, then `complete(with:)` to resolve it. Supports tagged calls for multiple concurrent operations.
-- `NonBlockingAsyncSpy` — For fire-and-forget async operations using `AsyncThrowingStream`. Results are polled via `result(at:timeout:)`.
+- `FireAndForgetSpy` — For fire-and-forget async operations using `AsyncThrowingStream`. Results are polled via `result(at:timeout:)`.
 - `CascadePolicy` — Configures cascading completion of sequential async calls (`asyncWithCascade`, `synchronousWithCascade`).
 
 **Testing** (`Testing/`) — Extensions on `Test` for fluent test APIs:
