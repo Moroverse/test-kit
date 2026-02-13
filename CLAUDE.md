@@ -8,7 +8,7 @@ TestKit is a Swift testing utilities library for the Swift Testing framework (wi
 
 - **Swift 6.2** / SPM package
 - **Platforms**: iOS 17+, macOS 14+, macCatalyst 17+
-- **Dependencies**: swift-custom-dump, swift-concurrency-extras (production); Mockable (tests only)
+- **Dependencies**: swift-custom-dump, swift-concurrency-extras
 
 ## Build & Test Commands
 
